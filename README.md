@@ -16,7 +16,7 @@ This repository is structured as a hackathon-ready build scaffold with useful on
 ## Status
 
 - Anchor contracts implemented and compiling (`cargo check`, `cargo test`)
-- Static manifesto/demo site implemented
+- Next.js manifesto/demo site implemented
 - Realms integration documented as plugin-facing adapter flow (version-specific compatibility still to finalize)
 
 ## Tooling Notes
@@ -26,14 +26,17 @@ This repository is structured as a hackathon-ready build scaffold with useful on
 
 ## Quick Start
 
-### Web (static)
+### Web (Next.js)
 
-Open `web/index.html` in a browser, or serve the folder:
+Install dependencies and run the dev server:
 
 ```bash
 cd web
-python3 -m http.server 8080
+npm install
+npm run dev
 ```
+
+Then open `http://localhost:3000`.
 
 ### Contracts (Rust/Anchor-compatible)
 
