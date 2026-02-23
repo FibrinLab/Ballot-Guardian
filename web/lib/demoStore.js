@@ -1,0 +1,234 @@
+export const DEMO_STORE_KEY = "ballot-guardian-demo:v1";
+
+export const DEFAULT_PROPOSAL_CHOICES = [
+  { id: "yes", label: "Yes" },
+  { id: "no", label: "No" },
+  { id: "abstain", label: "Abstain" },
+];
+
+export function createEmptyDemoStore() {
+  return {
+    version: 1,
+    daos: [],
+  };
+}
+
+export function loadDemoStore() {
+  if (typeof window === "undefined") {
+    return createEmptyDemoStore();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(DEMO_STORE_KEY);
+    if (!raw) return createEmptyDemoStore();
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.daos)) {
+      return createEmptyDemoStore();
+    }
+
+    return {
+      version: 1,
+      daos: parsed.daos,
+    };
+  } catch {
+    return createEmptyDemoStore();
+  }
+}
+
+export function saveDemoStore(store) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(store));
+}
+
+export function registerDao(store, input) {
+  const name = normalizeText(input.name);
+  const description = normalizeText(input.description);
+
+  if (!name) {
+    throw new Error("Union/DAO name is required.");
+  }
+
+  const dao = {
+    id: makeId("dao"),
+    name,
+    slug: slugify(name),
+    description,
+    createdAt: new Date().toISOString(),
+    createdBy: input.createdBy,
+    proof: input.proof || null,
+    proposals: [],
+  };
+
+  return {
+    store: {
+      ...store,
+      daos: [dao, ...store.daos],
+    },
+    dao,
+  };
+}
+
+export function createProposal(store, input) {
+  const daoId = input.daoId;
+  const question = normalizeText(input.question);
+  const description = normalizeText(input.description);
+  const durationHours = clampInteger(input.durationHours, 1, 24 * 30);
+
+  if (!daoId) throw new Error("Select a union/DAO first.");
+  if (!question) throw new Error("Proposal question is required.");
+
+  const createdAt = new Date();
+  const closesAt = new Date(createdAt.getTime() + durationHours * 60 * 60 * 1000);
+
+  let createdProposal = null;
+  let foundDao = false;
+
+  const daos = store.daos.map((dao) => {
+    if (dao.id !== daoId) return dao;
+    foundDao = true;
+
+    const proposal = {
+      id: makeId("prop"),
+      question,
+      description,
+      createdAt: createdAt.toISOString(),
+      closesAt: closesAt.toISOString(),
+      createdBy: input.createdBy,
+      proof: input.proof || null,
+      choices: DEFAULT_PROPOSAL_CHOICES,
+      votes: [],
+    };
+
+    createdProposal = proposal;
+
+    return {
+      ...dao,
+      proposals: [proposal, ...(dao.proposals || [])],
+    };
+  });
+
+  if (!foundDao || !createdProposal) {
+    throw new Error("Selected union/DAO could not be found.");
+  }
+
+  return {
+    store: { ...store, daos },
+    proposal: createdProposal,
+  };
+}
+
+export function castVote(store, input) {
+  const { daoId, proposalId, voter, choiceId, proof } = input;
+  if (!daoId || !proposalId) throw new Error("Missing proposal selection.");
+  if (!voter) throw new Error("Wallet address is required.");
+
+  const now = new Date();
+  let targetFound = false;
+  let updatedProposal = null;
+
+  const daos = store.daos.map((dao) => {
+    if (dao.id !== daoId) return dao;
+
+    return {
+      ...dao,
+      proposals: (dao.proposals || []).map((proposal) => {
+        if (proposal.id !== proposalId) return proposal;
+        targetFound = true;
+
+        if (isProposalClosed(proposal, now)) {
+          throw new Error("This proposal is closed.");
+        }
+
+        const validChoice = (proposal.choices || DEFAULT_PROPOSAL_CHOICES).some(
+          (choice) => choice.id === choiceId,
+        );
+        if (!validChoice) {
+          throw new Error("Invalid vote choice.");
+        }
+
+        const existingVotes = Array.isArray(proposal.votes) ? proposal.votes : [];
+        const existingIndex = existingVotes.findIndex((vote) => vote.voter === voter);
+
+        const nextVote = {
+          id: existingIndex >= 0 ? existingVotes[existingIndex].id : makeId("vote"),
+          voter,
+          choiceId,
+          castAt: now.toISOString(),
+          proof: proof || null,
+        };
+
+        const nextVotes =
+          existingIndex >= 0
+            ? existingVotes.map((vote, index) => (index === existingIndex ? nextVote : vote))
+            : [...existingVotes, nextVote];
+
+        updatedProposal = {
+          ...proposal,
+          votes: nextVotes,
+        };
+
+        return updatedProposal;
+      }),
+    };
+  });
+
+  if (!targetFound || !updatedProposal) {
+    throw new Error("Proposal not found.");
+  }
+
+  return {
+    store: { ...store, daos },
+    proposal: updatedProposal,
+  };
+}
+
+export function getProposalTallies(proposal) {
+  const counts = { yes: 0, no: 0, abstain: 0 };
+  for (const vote of proposal.votes || []) {
+    if (vote.choiceId in counts) {
+      counts[vote.choiceId] += 1;
+    }
+  }
+  return counts;
+}
+
+export function getWalletVote(proposal, walletAddress) {
+  if (!walletAddress) return null;
+  return (proposal.votes || []).find((vote) => vote.voter === walletAddress) || null;
+}
+
+export function isProposalClosed(proposal, now = new Date()) {
+  return new Date(proposal.closesAt).getTime() <= now.getTime();
+}
+
+export function getDaoById(store, daoId) {
+  return store.daos.find((dao) => dao.id === daoId) || null;
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+function clampInteger(value, min, max) {
+  const n = Number.parseInt(String(value), 10);
+  if (Number.isNaN(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function makeId(prefix) {
+  const uuid =
+    typeof globalThis !== "undefined" && globalThis.crypto && globalThis.crypto.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${uuid}`;
+}
+

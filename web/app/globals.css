@@ -374,6 +374,326 @@ details ul {
   margin-top: 10px;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.button,
+button,
+.wallet-adapter-button {
+  font: inherit;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  background: #f5f5f5;
+  color: #050505;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  text-decoration: none;
+  background: #ffffff;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button--ghost {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fg);
+}
+
+.button--ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.wallet-adapter-button {
+  border-radius: 0 !important;
+  min-height: 40px !important;
+  padding: 8px 14px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid var(--line-strong) !important;
+  color: var(--fg) !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.wallet-adapter-button:not([disabled]):hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-modal {
+  font-family: inherit !important;
+}
+
+.landing {
+  display: grid;
+  gap: 12px;
+}
+
+.landing-hero h1 {
+  max-width: 20ch;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dapp-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.dapp-hero {
+  margin-bottom: 0;
+}
+
+.dapp-hero__actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.mono-value {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.status-banner {
+  margin-top: 12px;
+  border: 1px solid var(--line-strong);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-banner[data-tone="error"] {
+  border-color: #7a4444;
+  background: rgba(122, 68, 68, 0.12);
+}
+
+.status-banner[data-tone="ok"] {
+  border-color: #4a6b4a;
+  background: rgba(74, 107, 74, 0.12);
+}
+
+.dapp-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.dapp-column,
+.workspace-column {
+  min-width: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field__label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input:not([type="range"]),
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--fg);
+  padding: 10px 12px;
+  border-radius: 0;
+  font: inherit;
+}
+
+input:not([type="range"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+.button:focus-visible {
+  outline: 1px solid var(--line-strong);
+  outline-offset: 2px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.list-tools {
+  margin-top: 12px;
+}
+
+.card-stack {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.dao-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--fg);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.dao-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dao-card.is-active {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dao-card__name {
+  font-weight: 600;
+}
+
+.dao-card__meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.empty-state {
+  border: 1px dashed var(--line-strong);
+  padding: 14px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.subpanel--spaced {
+  margin-top: 12px;
+}
+
+.proposal-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 12px;
+}
+
+.proposal-card p {
+  margin: 8px 0 0;
+}
+
+.proposal-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.proposal-card__head h3 {
+  margin: 0;
+}
+
+.proposal-card__foot {
+  margin-top: 10px !important;
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  padding: 2px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pill--muted {
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+.vote-tallies {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vote-tallies > div {
+  border: 1px solid var(--line);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.vote-tallies strong {
+  font-size: 18px;
+}
+
+.vote-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vote-button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.vote-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.vote-button.is-selected {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.vote-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .footer {
   border-top: 1px solid var(--line);
   margin-top: 32px;
@@ -411,7 +731,13 @@ details ul {
 @media (max-width: 900px) {
   .modules,
   .calculator-grid,
-  .details-grid {
+  .details-grid,
+  .landing-grid,
+  .wallet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dapp-grid {
     grid-template-columns: 1fr;
   }
 
@@ -433,6 +759,14 @@ details ul {
 
   .page {
     padding-top: 84px;
+  }
+
+  .vote-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vote-tallies {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -16,7 +16,7 @@ This repository is structured as a hackathon-ready build scaffold with useful on
 ## Status
 
 - Anchor contracts implemented and compiling (`cargo check`, `cargo test`)
-- Next.js manifesto/demo site implemented
+- Next.js frontend implemented (`/` landing, `/dapp` wallet demo, `/whitepaper` manifesto page)
 - Realms integration documented as plugin-facing adapter flow (version-specific compatibility still to finalize)
 
 ## Tooling Notes
@@ -37,6 +37,12 @@ npm run dev
 ```
 
 Then open `http://localhost:3000`.
+
+Routes:
+
+- `/` simple landing page
+- `/dapp` wallet-integrated union/DAO registration + ballot voting demo (local data store + wallet message signing)
+- `/whitepaper` full project vision / architecture page
 
 ### Contracts (Rust/Anchor-compatible)
 

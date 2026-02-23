@@ -2,8 +2,8 @@
 target/
 **/target/
 node_modules/
+.next/
 .anchor/
 .idea/
 .vscode/
 dist/
-

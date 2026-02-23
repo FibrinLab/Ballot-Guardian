@@ -1,4 +1,6 @@
 import "./globals.css";
+import "@solana/wallet-adapter-react-ui/styles.css";
+import AppProviders from "./providers";
 
 export const metadata = {
   title: "Ballot Guardian | Realms Governance Extension",
@@ -8,8 +10,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }
-
