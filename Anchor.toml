@@ -1,0 +1,21 @@
+[features]
+seeds = true
+skip-lint = false
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.localnet]
+# Program IDs intentionally left for deployment-time configuration.
+
+[workspace]
+members = [
+  "programs/quadratic-voting",
+  "programs/reputation-engine",
+  "programs/realms-adapter",
+]
+
+[scripts]
+test = "anchor test"
+

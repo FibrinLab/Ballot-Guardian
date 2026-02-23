@@ -1,0 +1,96 @@
+:root {
+  --bg: #050505;
+  --fg: #f2f2f2;
+  --muted: #a8a8a8;
+  --line: #2a2a2a;
+  --accent: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: "Courier Prime", "Courier New", Courier, monospace;
+  letter-spacing: 0.02em;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 26px, 26px 100%;
+}
+
+.page {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 48px 20px 72px;
+}
+
+.hero {
+  border: 1px solid var(--line);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.kicker {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 4vw, 42px);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.lead {
+  margin: 0;
+  color: var(--muted);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.label {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel p:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero {
+    animation: fade-in 420ms ease-out both;
+  }
+
+  .panel {
+    animation: fade-in 520ms ease-out both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

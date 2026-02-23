@@ -1,0 +1,13 @@
+[workspace]
+members = [
+  "programs/quadratic-voting",
+  "programs/reputation-engine",
+  "programs/realms-adapter",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["Ballot Guardian Contributors"]
+
