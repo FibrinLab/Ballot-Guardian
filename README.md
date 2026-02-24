@@ -1,87 +1,108 @@
 # Ballot Guardian
 
-Ballot Guardian is a Solana-first governance extension for Realms that introduces:
+Reputation-weighted quadratic voting for Solana Realms DAOs.
 
-- quadratic voting
-- reputation-weighted vote multipliers
-- anti-sybil guardrails
-- authority-first safety layers
+```
+    +---------------------------+
+    |      SPL Governance       |
+    |        (Realms)           |
+    +------------+--------------+
+                 |
+                 | reads VoterWeightRecord
+                 v
+    +---------------------------+
+    |     Realms Adapter        |
+    |  - AdapterConfig          |
+    |  - ProposalBinding        |
+    |  - PluginVoterWeightRecord|
+    +------+----------+---------+
+           |          |
+   binds   |          | reads multiplier_bps
+   ballot  |          |
+           v          v
++----------------+  +--------------------+
+| Quadratic      |  | Reputation Engine  |
+| Voting         |  |                    |
+| - Ballot       |  | - RealmRepConfig   |
+| - VoterAlloc   |  | - RepProfile       |
+| - cast_vote()  |  | - recompute()      |
++----------------+  +--------------------+
+```
 
-This repository is structured as a hackathon-ready build scaffold with useful on-chain MVP contracts:
+---
 
-- `web/`: ultrasimplistic black/white typewriter-style product/vision site
-- `programs/`: Anchor-compatible Solana programs for quadratic voting, reputation, and a Realms adapter
-- `docs/`: integration notes and architecture guidance
+## Programs
 
-## Status
+| Program | Instructions | Purpose |
+|---------|-------------|---------|
+| **quadratic-voting** | `initialize_ballot`, `register_voter`, `update_voter_reputation_snapshot`, `cast_vote`, `finalize_ballot` | Quadratic credit spend, reputation-scaled tallies |
+| **reputation-engine** | `initialize_realm_config`, `set_oracle_authority`, `create_profile`, `apply_component_delta`, `apply_penalty`, `recalculate_profile`, `snapshot_multiplier` | Behavior-based scoring, bounded multiplier computation |
+| **realms-adapter** | `initialize_adapter`, `bind_proposal`, `set_council_override`, `create_voter_weight_record`, `refresh_voter_weight_record` | Binds Realms proposals to QV ballots, publishes voter weight records |
 
-- Anchor contracts implemented and compiling (`cargo check`, `cargo test`)
-- Next.js frontend implemented (`/` landing, `/dapp` wallet demo, `/whitepaper` manifesto page)
-- Realms integration documented as plugin-facing adapter flow (version-specific compatibility still to finalize)
+All three programs follow the same modular layout: `state.rs`, `errors.rs`, `events.rs`, and math/helper modules.
 
-## Tooling Notes
-
-- `anchor-cli` was not installed in the original build session, but the contracts were still authored in Anchor format and verified with `cargo`.
-- Rust (`cargo`) is available.
+---
 
 ## Quick Start
 
-### Web (Next.js)
-
-Install dependencies and run the dev server:
+### Frontend
 
 ```bash
-cd web
-npm install
-npm run dev
+cd web && npm install && npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`. Routes: `/` landing, `/dapp` wallet + union/ballot demo, `/whitepaper` technical vision.
 
-Routes:
-
-- `/` simple landing page
-- `/dapp` wallet-integrated union/DAO registration + ballot voting demo (local data store + wallet message signing)
-- `/whitepaper` full project vision / architecture page
-
-### Contracts (Rust/Anchor-compatible)
+### Contracts
 
 ```bash
 cargo check
 cargo test
 ```
 
-If you want full Anchor workflows (`anchor build`, `anchor test`, IDL generation), install `anchor-cli`.
+For full Anchor workflows (`anchor build`, IDL generation), install `anchor-cli`.
 
-## Programs Overview
+---
 
-### `quadratic-voting`
+## Demo Flow
 
-- Initializes proposal-specific quadratic ballot PDAs
-- Registers voters with credit budgets and reputation multiplier snapshots
-- Enforces quadratic cost when casting additive votes
-- Maintains reputation-scaled tallies (`u128` basis-point scaled)
+1. **Connect wallet** -- open `/dapp`, connect Phantom (Solana devnet)
+2. **Register a union/DAO** -- fill in name + description, sign with wallet
+3. **Create a ballot** -- add a proposal question and voting window
+4. **Cast a vote** -- select Yes / No / Abstain, sign with wallet
+5. **View audit trail** -- scroll down to see all wallet-signed actions with truncated signatures
+6. **View reputation** -- simulated reputation dashboard shows multiplier computation
 
-### `reputation-engine`
+---
 
-- Stores realm-level scoring config
-- Maintains per-member reputation profiles in PDAs
-- Supports component deltas + explicit penalties
-- Computes bounded multiplier (`base +/- score/penalties`, clamped to min/max)
+## Realms Integration
 
-### `realms-adapter`
+Ballot Guardian is a **Voter Weight Plugin**, not a fork of SPL Governance. Realms keeps proposals and execution; we add vote weight logic.
 
-- Binds Realms proposal pubkeys to Ballot Guardian ballots
-- Stores plugin-style voter weight records
-- Computes effective weight from QV component + reputation multiplier
-- Includes optional council-override signal state
+**Integration flow:**
 
-## Positioning (Current Default)
+1. `initialize_adapter` -- register the adapter for a realm
+2. `initialize_realm_config` -- configure reputation weights and bounds
+3. Proposal created in Realms
+4. `initialize_ballot` + `bind_proposal` -- link Realms proposal to QV ballot
+5. `register_voter` + `create_voter_weight_record` -- set up voter
+6. `refresh_voter_weight_record` -- compute `qv_component * rep_bps / 10_000`
+7. Realms reads VWR for voting power; `cast_vote` records QV tally
+8. `finalize_ballot` -- close voting
 
-Primary pitch is `C) Infrastructure primitive for all Realms DAOs`, with trade unions as a high-impact example and origin story.
+**Production steps:** Lock target SPL Governance version. Make `PluginVoterWeightRecord` layout byte-compatible with that version's VWR. Register the adapter program as the realm's `voter-weight-addin` via `set_realm_config`.
 
-## Next Steps
+---
 
-1. Lock target Realms / SPL Governance plugin interface version.
-2. Add integration tests with real SPL Governance add-in record layouts.
-3. Build a minimal vote-casting demo UI against local validator.
+## Repo Layout
+
+```
+programs/
+  quadratic-voting/src/   -- lib.rs, state.rs, errors.rs, events.rs, math.rs
+  reputation-engine/src/  -- lib.rs, state.rs, errors.rs, events.rs, helpers.rs
+  realms-adapter/src/     -- lib.rs, state.rs, errors.rs, events.rs, math.rs
+web/
+  app/                    -- Next.js app router (landing, dapp, whitepaper)
+  app/components/         -- TypewriterHeadline, MathCalculator, NetworkStatus,
+                             ReputationDashboard, AuditTrail, WalletConnectButton
+```

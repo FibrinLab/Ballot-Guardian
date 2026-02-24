@@ -1,4 +1,19 @@
+//! Realms adapter program: binds Realms proposals to quadratic ballots and publishes voter weight records.
+//!
+//! Layout is modular: state, events, errors, and math live in separate modules.
+
 use anchor_lang::prelude::*;
+
+mod errors;
+mod events;
+mod math;
+mod state;
+
+pub use errors::*;
+pub use events::*;
+pub use state::*;
+
+use math::{compute_effective_weight, integer_sqrt_u64};
 
 declare_id!("11111111111111111111111111111111");
 
@@ -166,6 +181,8 @@ pub mod realms_adapter {
     }
 }
 
+// --- Instruction args (kept in lib for dispatch) ---
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct InitializeAdapterArgs {
     pub realm: Pubkey,
@@ -194,6 +211,8 @@ pub struct RefreshVoterWeightArgs {
     pub voter_weight_expiry_slot: Option<u64>,
     pub weight_action_target: Option<Pubkey>,
 }
+
+// --- Context structs ---
 
 #[derive(Accounts)]
 #[instruction(args: InitializeAdapterArgs)]
@@ -298,153 +317,4 @@ pub struct RefreshVoterWeightRecord<'info> {
         constraint = voter_weight_record.voter == voter.key() @ RealmsAdapterError::WeightRecordVoterMismatch,
     )]
     pub voter_weight_record: Account<'info, PluginVoterWeightRecord>,
-}
-
-#[account]
-pub struct AdapterConfig {
-    pub realm: Pubkey,
-    pub admin: Pubkey,
-    pub governance_program_id: Pubkey,
-    pub quadratic_voting_program: Pubkey,
-    pub reputation_engine_program: Pubkey,
-    pub council_override_authority: Pubkey,
-    pub bump: u8,
-    pub min_reputation_bps: u16,
-    pub max_reputation_bps: u16,
-}
-
-impl AdapterConfig {
-    pub const LEN: usize = (32 * 6) + 1 + 2 + 2;
-}
-
-#[account]
-pub struct ProposalBinding {
-    pub adapter_config: Pubkey,
-    pub realm: Pubkey,
-    pub proposal: Pubkey,
-    pub quadratic_ballot: Pubkey,
-    pub governing_token_mint: Pubkey,
-    pub bump: u8,
-    pub council_override_enabled: bool,
-    pub council_override_active: bool,
-    pub council_override_reason_code: u16,
-    pub default_weight_expiry_slot: u64,
-    pub last_weight_refresh_slot: u64,
-}
-
-impl ProposalBinding {
-    pub const LEN: usize = (32 * 5) + 1 + 1 + 1 + 2 + 8 + 8;
-}
-
-#[account]
-pub struct PluginVoterWeightRecord {
-    pub binding: Pubkey,
-    pub voter: Pubkey,
-    pub governing_token_mint: Pubkey,
-    pub bump: u8,
-    pub voter_weight: u64,
-    pub voter_weight_expiry_slot: Option<u64>,
-    pub weight_action_target: Option<Pubkey>,
-    pub token_amount_allocated: u64,
-    pub qv_votes_allocated: u32,
-    pub reputation_multiplier_bps: u16,
-    pub last_updated_slot: u64,
-    pub council_override_active: bool,
-}
-
-impl PluginVoterWeightRecord {
-    pub const LEN: usize =
-        (32 * 3) + 1 + 8 + (1 + 8) + (1 + 32) + 8 + 4 + 2 + 8 + 1;
-}
-
-#[event]
-pub struct AdapterInitializedEvent {
-    pub realm: Pubkey,
-    pub admin: Pubkey,
-}
-
-#[event]
-pub struct ProposalBoundEvent {
-    pub realm: Pubkey,
-    pub proposal: Pubkey,
-    pub quadratic_ballot: Pubkey,
-}
-
-#[event]
-pub struct CouncilOverrideUpdatedEvent {
-    pub proposal: Pubkey,
-    pub active: bool,
-    pub reason_code: u16,
-}
-
-#[event]
-pub struct VoterWeightRecordRefreshedEvent {
-    pub proposal: Pubkey,
-    pub voter: Pubkey,
-    pub voter_weight: u64,
-    pub qv_component: u64,
-    pub reputation_multiplier_bps: u16,
-    pub council_override_active: bool,
-}
-
-#[error_code]
-pub enum RealmsAdapterError {
-    #[msg("Unauthorized caller")]
-    Unauthorized,
-    #[msg("Invalid reputation bounds")]
-    InvalidReputationBounds,
-    #[msg("Math overflow")]
-    MathOverflow,
-    #[msg("Binding does not belong to config")]
-    BindingConfigMismatch,
-    #[msg("Binding does not match proposal")]
-    BindingProposalMismatch,
-    #[msg("Weight record does not belong to binding")]
-    WeightRecordBindingMismatch,
-    #[msg("Weight record does not belong to voter")]
-    WeightRecordVoterMismatch,
-    #[msg("Governing token mint mismatch")]
-    MintMismatch,
-    #[msg("Council override is disabled for this proposal")]
-    CouncilOverrideDisabled,
-}
-
-fn compute_effective_weight(qv_component: u64, reputation_multiplier_bps: u16) -> Result<u64> {
-    let scaled = (qv_component as u128)
-        .checked_mul(reputation_multiplier_bps as u128)
-        .ok_or(RealmsAdapterError::MathOverflow)?;
-    let weight = scaled / 10_000u128;
-    u64::try_from(weight).map_err(|_| RealmsAdapterError::MathOverflow.into())
-}
-
-fn integer_sqrt_u64(value: u64) -> u64 {
-    if value < 2 {
-        return value;
-    }
-
-    let mut x0 = value;
-    let mut x1 = (x0 + value / x0) / 2;
-    while x1 < x0 {
-        x0 = x1;
-        x1 = (x0 + value / x0) / 2;
-    }
-    x0
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sqrt_rounds_down() {
-        assert_eq!(integer_sqrt_u64(99), 9);
-        assert_eq!(integer_sqrt_u64(100), 10);
-        assert_eq!(integer_sqrt_u64(101), 10);
-    }
-
-    #[test]
-    fn weight_uses_bps_multiplier() {
-        let weight = compute_effective_weight(10, 15_000).unwrap();
-        assert_eq!(weight, 15);
-    }
 }

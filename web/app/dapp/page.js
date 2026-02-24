@@ -4,6 +4,8 @@ import Link from "next/link";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import WalletConnectButton from "../components/WalletConnectButton";
+import ReputationDashboard from "../components/ReputationDashboard";
+import AuditTrail from "../components/AuditTrail";
 import {
   castVote,
   createEmptyDemoStore,
@@ -338,7 +340,7 @@ export default function DappPage() {
                 type="submit"
                 disabled={!connected || busyAction === "register-dao"}
               >
-                {busyAction === "register-dao" ? "Signing + Registering…" : "Register Union"}
+                {busyAction === "register-dao" ? "Signing + Registering..." : "Register Union"}
               </button>
             </form>
 
@@ -450,7 +452,7 @@ export default function DappPage() {
                       type="submit"
                       disabled={!connected || busyAction === "create-proposal"}
                     >
-                      {busyAction === "create-proposal" ? "Signing + Creating…" : "Create Ballot"}
+                      {busyAction === "create-proposal" ? "Signing + Creating..." : "Create Ballot"}
                     </button>
                   </form>
                 </div>
@@ -537,6 +539,27 @@ export default function DappPage() {
             )}
           </section>
         </section>
+
+        <section className="panel" aria-labelledby="rep-dashboard-title">
+          <div className="panel__head">
+            <p className="label">REPUTATION ENGINE (SIMULATED)</p>
+          </div>
+          <h2 id="rep-dashboard-title">Voter reputation profile</h2>
+          <p className="mini" style={{ marginBottom: 12 }}>
+            This simulated dashboard shows how a connected voter&#39;s reputation multiplier would be
+            computed. Live data will use the on-chain Reputation Engine program.
+          </p>
+          <ReputationDashboard />
+        </section>
+
+        <section className="panel" aria-labelledby="audit-trail-title">
+          <div className="panel__head">
+            <p className="label">AUDIT TRAIL</p>
+            <p className="mini">All wallet-signed actions for the selected DAO</p>
+          </div>
+          <h2 id="audit-trail-title">On-chain auditability</h2>
+          <AuditTrail store={store} daoId={selectedDaoId} />
+        </section>
       </main>
     </>
   );
@@ -556,7 +579,7 @@ function toHex(uint8Array) {
 function compactAddress(value) {
   if (!value) return "n/a";
   if (value.length < 10) return value;
-  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
 function lamportsToSol(lamports) {
@@ -575,4 +598,3 @@ function choiceLabel(choiceId) {
   if (choiceId === "abstain") return "Abstain";
   return choiceId;
 }
-

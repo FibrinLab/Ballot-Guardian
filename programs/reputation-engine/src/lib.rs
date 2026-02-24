@@ -1,4 +1,19 @@
+//! Reputation engine program: behavior-based scoring and bounded multiplier computation.
+//!
+//! Layout is modular: state, events, errors, and helpers live in separate modules.
+
 use anchor_lang::prelude::*;
+
+mod errors;
+mod events;
+mod helpers;
+mod state;
+
+pub use errors::*;
+pub use events::*;
+pub use state::*;
+
+use helpers::{apply_delta_u32, recompute_multiplier, require_authorized_updater};
 
 declare_id!("11111111111111111111111111111111");
 
@@ -158,6 +173,8 @@ pub mod reputation_engine {
     }
 }
 
+// --- Instruction args (kept in lib for dispatch) ---
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct InitializeRealmConfigArgs {
     pub realm: Pubkey,
@@ -184,6 +201,8 @@ pub struct ApplyComponentDeltaArgs {
     pub tenure_delta: i32,
     pub delegation_delta: i32,
 }
+
+// --- Context structs ---
 
 #[derive(Accounts)]
 #[instruction(args: InitializeRealmConfigArgs)]
@@ -257,190 +276,4 @@ pub struct ReadProfile<'info> {
         constraint = profile.member == member.key() @ ReputationError::ProfileMemberMismatch,
     )]
     pub profile: Account<'info, ReputationProfile>,
-}
-
-#[account]
-pub struct RealmReputationConfig {
-    pub realm: Pubkey,
-    pub admin: Pubkey,
-    pub oracle_authority: Pubkey,
-    pub bump: u8,
-    pub min_multiplier_bps: u16,
-    pub base_multiplier_bps: u16,
-    pub max_multiplier_bps: u16,
-    pub participation_weight: u16,
-    pub proposal_weight: u16,
-    pub staking_weight: u16,
-    pub tenure_weight: u16,
-    pub delegation_weight: u16,
-    pub points_per_bonus_bps: u32,
-    pub penalty_unit_bps: u16,
-    pub max_bonus_bps: u16,
-    pub max_penalty_bps: u16,
-}
-
-impl RealmReputationConfig {
-    pub const LEN: usize = 32 + 32 + 32 + 1 + (2 * 11) + 4;
-}
-
-#[account]
-pub struct ReputationProfile {
-    pub realm: Pubkey,
-    pub member: Pubkey,
-    pub bump: u8,
-    pub participation_score: u32,
-    pub proposal_creation_score: u32,
-    pub staking_score: u32,
-    pub tenure_score: u32,
-    pub delegation_trust_score: u32,
-    pub penalties_score: u32,
-    pub multiplier_bps: u16,
-    pub last_updated_slot: u64,
-}
-
-impl ReputationProfile {
-    pub const LEN: usize = 32 + 32 + 1 + (4 * 6) + 2 + 8;
-}
-
-#[event]
-pub struct RealmConfigInitializedEvent {
-    pub realm: Pubkey,
-    pub admin: Pubkey,
-    pub oracle_authority: Pubkey,
-}
-
-#[event]
-pub struct ProfileCreatedEvent {
-    pub realm: Pubkey,
-    pub member: Pubkey,
-    pub multiplier_bps: u16,
-}
-
-#[event]
-pub struct ProfileUpdatedEvent {
-    pub realm: Pubkey,
-    pub member: Pubkey,
-    pub multiplier_bps: u16,
-    pub penalties_score: u32,
-}
-
-#[event]
-pub struct PenaltyAppliedEvent {
-    pub realm: Pubkey,
-    pub member: Pubkey,
-    pub penalty_points: u32,
-    pub reason_code: u16,
-    pub multiplier_bps: u16,
-}
-
-#[event]
-pub struct MultiplierSnapshotEvent {
-    pub realm: Pubkey,
-    pub member: Pubkey,
-    pub multiplier_bps: u16,
-    pub slot: u64,
-}
-
-#[error_code]
-pub enum ReputationError {
-    #[msg("Unauthorized updater")]
-    Unauthorized,
-    #[msg("Invalid multiplier configuration")]
-    InvalidMultiplierConfig,
-    #[msg("Invalid scoring configuration")]
-    InvalidScoringConfig,
-    #[msg("Math overflow")]
-    MathOverflow,
-    #[msg("Invalid penalty input")]
-    InvalidPenalty,
-    #[msg("Profile does not match realm")]
-    ProfileRealmMismatch,
-    #[msg("Profile does not match member")]
-    ProfileMemberMismatch,
-}
-
-fn require_authorized_updater(
-    updater: &Signer,
-    config: &Account<RealmReputationConfig>,
-) -> Result<()> {
-    let key = updater.key();
-    require!(
-        key == config.admin || key == config.oracle_authority,
-        ReputationError::Unauthorized
-    );
-    Ok(())
-}
-
-fn apply_delta_u32(current: u32, delta: i32) -> Result<u32> {
-    if delta >= 0 {
-        current
-            .checked_add(delta as u32)
-            .ok_or(ReputationError::MathOverflow.into())
-    } else {
-        Ok(current.saturating_sub(delta.unsigned_abs()))
-    }
-}
-
-fn recompute_multiplier(
-    config: &Account<RealmReputationConfig>,
-    profile: &mut Account<ReputationProfile>,
-) -> Result<()> {
-    let weighted_points = weighted_points(profile, config)?;
-
-    let mut bonus_bps = (weighted_points / config.points_per_bonus_bps as u128) as u16;
-    if bonus_bps > config.max_bonus_bps {
-        bonus_bps = config.max_bonus_bps;
-    }
-
-    let penalty_bps_u32 = profile
-        .penalties_score
-        .checked_mul(config.penalty_unit_bps as u32)
-        .ok_or(ReputationError::MathOverflow)?;
-    let mut penalty_bps = penalty_bps_u32.min(config.max_penalty_bps as u32) as u16;
-    if penalty_bps > config.max_penalty_bps {
-        penalty_bps = config.max_penalty_bps;
-    }
-
-    let boosted = config
-        .base_multiplier_bps
-        .checked_add(bonus_bps)
-        .ok_or(ReputationError::MathOverflow)?;
-    let penalized = boosted.saturating_sub(penalty_bps);
-
-    profile.multiplier_bps = penalized.clamp(config.min_multiplier_bps, config.max_multiplier_bps);
-    Ok(())
-}
-
-fn weighted_points(
-    profile: &ReputationProfile,
-    config: &RealmReputationConfig,
-) -> Result<u128> {
-    let mut sum = 0u128;
-    sum = sum
-        .checked_add(profile.participation_score as u128 * config.participation_weight as u128)
-        .ok_or(ReputationError::MathOverflow)?;
-    sum = sum
-        .checked_add(profile.proposal_creation_score as u128 * config.proposal_weight as u128)
-        .ok_or(ReputationError::MathOverflow)?;
-    sum = sum
-        .checked_add(profile.staking_score as u128 * config.staking_weight as u128)
-        .ok_or(ReputationError::MathOverflow)?;
-    sum = sum
-        .checked_add(profile.tenure_score as u128 * config.tenure_weight as u128)
-        .ok_or(ReputationError::MathOverflow)?;
-    sum = sum
-        .checked_add(profile.delegation_trust_score as u128 * config.delegation_weight as u128)
-        .ok_or(ReputationError::MathOverflow)?;
-    Ok(sum)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn delta_subtracts_safely() {
-        assert_eq!(apply_delta_u32(10, -4).unwrap(), 6);
-        assert_eq!(apply_delta_u32(3, -10).unwrap(), 0);
-    }
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import TypewriterHeadline from "./components/TypewriterHeadline";
+import NetworkStatus from "./components/NetworkStatus";
 
 export default function LandingPage() {
   return (
@@ -18,7 +20,10 @@ export default function LandingPage() {
       <main className="page landing">
         <section className="hero landing-hero">
           <p className="kicker">TRUSTED ONCHAIN VOTING FOR UNIONS + REALMS DAOS</p>
-          <h1>Register a union. Create a ballot. Vote with your wallet.</h1>
+          <TypewriterHeadline
+            id="hero-title"
+            text="Register a union. Create a ballot. Vote with your wallet."
+          />
           <p className="lead">
             Ballot Guardian is a Solana governance application and Realms extension concept built
             for legitimate digital ballots in serious organizations.
@@ -36,6 +41,7 @@ export default function LandingPage() {
         <section className="panel">
           <div className="panel__head">
             <p className="label">HOW IT WORKS (MVP)</p>
+            <NetworkStatus />
           </div>
           <div className="landing-grid">
             <article className="subpanel">
@@ -81,8 +87,26 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <section className="panel">
+          <div className="panel__head">
+            <p className="label">EXPLORE ARCHITECTURE</p>
+          </div>
+          <h2>Three programs, one governance upgrade path</h2>
+          <p>
+            Quadratic Voting, Reputation Engine, and Realms Adapter work together as a Voter Weight
+            Plugin for Realms. Read the full technical breakdown in the whitepaper.
+          </p>
+          <div className="button-row">
+            <Link className="button button--ghost" href="/whitepaper#modules">
+              View System Modules
+            </Link>
+            <Link className="button button--ghost" href="/whitepaper#architecture">
+              View Architecture Diagram
+            </Link>
+          </div>
+        </section>
       </main>
     </>
   );
 }
-

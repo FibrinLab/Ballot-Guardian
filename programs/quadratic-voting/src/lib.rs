@@ -1,4 +1,18 @@
+//! Quadratic voting program: proposal-level ballots, credit budgets, and reputation-scaled tallies.
+//!
+//! Layout is modular: state, events, errors, and math live in separate modules.
+
 use anchor_lang::prelude::*;
+
+mod errors;
+mod events;
+mod math;
+mod state;
+
+pub use errors::*;
+pub use events::*;
+pub use math::*;
+pub use state::*;
 
 declare_id!("11111111111111111111111111111111");
 
@@ -157,7 +171,8 @@ pub mod quadratic_voting {
         allocation.credits_spent = new_spent;
         allocation.last_updated_slot = clock.slot;
 
-        let weighted_increment = scaled_vote_weight(additional_votes, allocation.reputation_multiplier_bps)?;
+        let weighted_increment =
+            scaled_vote_weight(additional_votes, allocation.reputation_multiplier_bps)?;
         ballot.add_tally(choice, weighted_increment)?;
 
         emit!(VoteCastEvent {
@@ -197,8 +212,7 @@ pub mod quadratic_voting {
     }
 }
 
-const MAX_MULTIPLIER_BPS: u16 = 20_000;
-const MIN_MULTIPLIER_BPS: u16 = 5_000;
+// --- Instruction args (kept in lib for dispatch) ---
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub struct InitializeBallotArgs {
@@ -216,12 +230,7 @@ pub struct RegisterVoterArgs {
     pub reputation_multiplier_bps: u16,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
-pub enum VoteChoice {
-    Yes,
-    No,
-    Abstain,
-}
+// --- Context structs ---
 
 #[derive(Accounts)]
 #[instruction(args: InitializeBallotArgs)]
@@ -304,210 +313,4 @@ pub struct FinalizeBallot<'info> {
         has_one = authority @ QuadraticVotingError::Unauthorized,
     )]
     pub ballot: Account<'info, QuadraticBallot>,
-}
-
-#[account]
-pub struct QuadraticBallot {
-    pub authority: Pubkey,
-    pub realm: Pubkey,
-    pub proposal: Pubkey,
-    pub bump: u8,
-    pub min_reputation_bps: u16,
-    pub max_reputation_bps: u16,
-    pub voting_starts_at: i64,
-    pub voting_ends_at: i64,
-    pub finalized: bool,
-    pub total_registered_voters: u32,
-    pub total_credits_budget: u64,
-    pub yes_tally_scaled: u128,
-    pub no_tally_scaled: u128,
-    pub abstain_tally_scaled: u128,
-}
-
-impl QuadraticBallot {
-    pub const LEN: usize = 32 + 32 + 32 + 1 + 2 + 2 + 8 + 8 + 1 + 4 + 8 + 16 + 16 + 16;
-
-    fn add_tally(&mut self, choice: VoteChoice, weighted_increment_scaled: u128) -> Result<()> {
-        match choice {
-            VoteChoice::Yes => {
-                self.yes_tally_scaled = self
-                    .yes_tally_scaled
-                    .checked_add(weighted_increment_scaled)
-                    .ok_or(QuadraticVotingError::MathOverflow)?;
-            }
-            VoteChoice::No => {
-                self.no_tally_scaled = self
-                    .no_tally_scaled
-                    .checked_add(weighted_increment_scaled)
-                    .ok_or(QuadraticVotingError::MathOverflow)?;
-            }
-            VoteChoice::Abstain => {
-                self.abstain_tally_scaled = self
-                    .abstain_tally_scaled
-                    .checked_add(weighted_increment_scaled)
-                    .ok_or(QuadraticVotingError::MathOverflow)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-#[account]
-pub struct VoterAllocation {
-    pub ballot: Pubkey,
-    pub voter: Pubkey,
-    pub bump: u8,
-    pub reputation_multiplier_bps: u16,
-    pub credits_budget: u64,
-    pub credits_spent: u64,
-    pub yes_votes: u32,
-    pub no_votes: u32,
-    pub abstain_votes: u32,
-    pub last_updated_slot: u64,
-}
-
-impl VoterAllocation {
-    pub const LEN: usize = 32 + 32 + 1 + 2 + 8 + 8 + 4 + 4 + 4 + 8;
-
-    fn votes_for_choice(&self, choice: VoteChoice) -> u32 {
-        match choice {
-            VoteChoice::Yes => self.yes_votes,
-            VoteChoice::No => self.no_votes,
-            VoteChoice::Abstain => self.abstain_votes,
-        }
-    }
-
-    fn set_votes_for_choice(&mut self, choice: VoteChoice, value: u32) {
-        match choice {
-            VoteChoice::Yes => self.yes_votes = value,
-            VoteChoice::No => self.no_votes = value,
-            VoteChoice::Abstain => self.abstain_votes = value,
-        }
-    }
-}
-
-#[event]
-pub struct BallotInitializedEvent {
-    pub ballot: Pubkey,
-    pub realm: Pubkey,
-    pub proposal: Pubkey,
-    pub authority: Pubkey,
-    pub voting_starts_at: i64,
-    pub voting_ends_at: i64,
-}
-
-#[event]
-pub struct VoterRegisteredEvent {
-    pub ballot: Pubkey,
-    pub voter: Pubkey,
-    pub credits_budget: u64,
-    pub reputation_multiplier_bps: u16,
-}
-
-#[event]
-pub struct VoteCastEvent {
-    pub ballot: Pubkey,
-    pub voter: Pubkey,
-    pub choice: VoteChoice,
-    pub added_votes: u32,
-    pub incremental_cost: u64,
-    pub credits_spent: u64,
-    pub reputation_multiplier_bps: u16,
-    pub weighted_increment_scaled: u128,
-}
-
-#[event]
-pub struct BallotFinalizedEvent {
-    pub ballot: Pubkey,
-    pub yes_tally_scaled: u128,
-    pub no_tally_scaled: u128,
-    pub abstain_tally_scaled: u128,
-}
-
-#[error_code]
-pub enum QuadraticVotingError {
-    #[msg("Unauthorized caller")]
-    Unauthorized,
-    #[msg("Invalid voting window")]
-    InvalidVotingWindow,
-    #[msg("Invalid reputation multiplier bounds")]
-    InvalidReputationBounds,
-    #[msg("Invalid credit budget")]
-    InvalidCreditsBudget,
-    #[msg("Voting has not started")]
-    VotingNotStarted,
-    #[msg("Voting window is closed")]
-    VotingWindowClosed,
-    #[msg("Voting is still active")]
-    VotingStillActive,
-    #[msg("Ballot already finalized")]
-    BallotFinalized,
-    #[msg("Math overflow")]
-    MathOverflow,
-    #[msg("Credit budget exceeded")]
-    CreditBudgetExceeded,
-    #[msg("Zero votes requested")]
-    ZeroAdditionalVotes,
-    #[msg("Reputation multiplier outside ballot bounds")]
-    ReputationMultiplierOutOfBounds,
-    #[msg("Voting already started")]
-    VotingAlreadyStarted,
-    #[msg("Cannot change multiplier after voting activity")]
-    CannotChangeMultiplierAfterVoting,
-    #[msg("Voter allocation belongs to a different ballot")]
-    AllocationBallotMismatch,
-    #[msg("Voter allocation belongs to a different voter")]
-    AllocationVoterMismatch,
-}
-
-fn require_multiplier_bounds(ballot: &QuadraticBallot, multiplier_bps: u16) -> Result<()> {
-    require!(
-        multiplier_bps >= ballot.min_reputation_bps && multiplier_bps <= ballot.max_reputation_bps,
-        QuadraticVotingError::ReputationMultiplierOutOfBounds
-    );
-    Ok(())
-}
-
-fn quadratic_increment_cost(previous_votes: u32, new_votes: u32) -> Result<u64> {
-    require!(new_votes >= previous_votes, QuadraticVotingError::MathOverflow);
-
-    let before = square_u64(previous_votes);
-    let after = square_u64(new_votes);
-    after
-        .checked_sub(before)
-        .ok_or(QuadraticVotingError::MathOverflow.into())
-}
-
-fn square_u64(value: u32) -> u64 {
-    let v = value as u64;
-    v.saturating_mul(v)
-}
-
-fn scaled_vote_weight(votes: u32, multiplier_bps: u16) -> Result<u128> {
-    let weighted = (votes as u128)
-        .checked_mul(multiplier_bps as u128)
-        .ok_or(QuadraticVotingError::MathOverflow)?;
-    require!(
-        multiplier_bps <= MAX_MULTIPLIER_BPS && multiplier_bps >= MIN_MULTIPLIER_BPS,
-        QuadraticVotingError::ReputationMultiplierOutOfBounds
-    );
-    Ok(weighted)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn quadratic_cost_delta_is_correct() {
-        let delta = quadratic_increment_cost(5, 10).unwrap();
-        assert_eq!(delta, 75);
-    }
-
-    #[test]
-    fn scaled_weight_uses_bps_precision() {
-        let weighted = scaled_vote_weight(10, 15_000).unwrap();
-        assert_eq!(weighted, 150_000);
-    }
 }
