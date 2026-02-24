@@ -23,9 +23,9 @@ export default function WhitepaperPage() {
 
       <header className="topbar">
         <div className="topbar__inner">
-          <span>BALLOT GUARDIAN</span>
+          <a href="/" className="topbar__brand">BALLOT GUARDIAN</a>
           <nav aria-label="Primary">
-            <a href="/">Back to Home</a>
+            <a href="/dapp">Dapp</a>
           </nav>
         </div>
       </header>

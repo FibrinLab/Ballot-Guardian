@@ -11,3 +11,7 @@ edition = "2021"
 license = "MIT"
 authors = ["Ballot Guardian Contributors"]
 
+[workspace.dependencies]
+solana-program = "2.2.0"
+borsh = "1.5.7"
+

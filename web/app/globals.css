@@ -88,6 +88,15 @@ a:hover {
   color: var(--muted);
 }
 
+.topbar__brand {
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.topbar__brand:hover {
+  color: var(--fg);
+}
+
 .topbar nav {
   display: flex;
   gap: 12px;
@@ -436,9 +445,145 @@ button,
   background: rgba(0, 0, 0, 0.06) !important;
 }
 
-.wallet-adapter-modal-wrapper,
+/* --- Wallet adapter modal overrides --- */
+
+.wallet-adapter-modal-wrapper {
+  font-family: inherit !important;
+}
+
 .wallet-adapter-modal {
   font-family: inherit !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-modal {
+  background: var(--panel) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
+  padding: 20px !important;
+}
+
+.wallet-adapter-modal-title {
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--fg) !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-button {
+  border-radius: 0 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--fg) !important;
+  padding: 10px 12px !important;
+  min-height: 40px !important;
+  justify-content: flex-start !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-button:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: var(--line-strong) !important;
+}
+
+.wallet-adapter-modal-wrapper .wallet-adapter-button-end-icon,
+.wallet-adapter-modal-wrapper .wallet-adapter-button-start-icon {
+  /* keep wallet icons but they fit the layout */
+}
+
+.wallet-adapter-modal-button-close {
+  background: transparent !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  color: var(--muted) !important;
+  padding: 4px !important;
+  top: 14px !important;
+  right: 14px !important;
+}
+
+.wallet-adapter-modal-button-close:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: var(--line-strong) !important;
+  color: var(--fg) !important;
+}
+
+.wallet-adapter-modal-button-close svg {
+  fill: currentColor !important;
+}
+
+.wallet-adapter-modal-list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.wallet-adapter-modal-list li {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.wallet-adapter-modal-list li + li {
+  margin-top: 6px !important;
+}
+
+.wallet-adapter-modal-list .wallet-adapter-button {
+  width: 100% !important;
+}
+
+.wallet-adapter-modal-middle {
+  padding: 0 !important;
+}
+
+.wallet-adapter-modal-middle-button {
+  font-family: inherit !important;
+  border-radius: 0 !important;
+  background: rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid var(--line-strong) !important;
+  color: var(--fg) !important;
+  display: block !important;
+  width: 100% !important;
+  padding: 10px 14px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+}
+
+.wallet-adapter-modal-middle-button:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.wallet-adapter-collapse {
+  font-family: inherit !important;
+}
+
+.wallet-adapter-modal-overlay {
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(3px) !important;
+}
+
+.wallet-adapter-dropdown {
+  font-family: inherit !important;
+}
+
+.wallet-adapter-dropdown-list {
+  background: var(--panel) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  font-family: inherit !important;
+  padding: 4px !important;
+}
+
+.wallet-adapter-dropdown-list-item {
+  border-radius: 0 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  color: var(--fg) !important;
+}
+
+.wallet-adapter-dropdown-list-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
 }
 
 .landing {
@@ -718,6 +863,70 @@ textarea {
   }
 }
 
+/* --- Comparison table --- */
+
+.comparison-table {
+  display: grid;
+  gap: 0;
+  margin-top: 8px;
+}
+
+.comparison-table__header,
+.comparison-table__row {
+  display: grid;
+  grid-template-columns: 1fr 140px 140px;
+  gap: 0;
+}
+
+.comparison-table__header {
+  border: 1px solid var(--line-strong);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.comparison-table__header > span {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.comparison-table__row {
+  border: 1px solid var(--line);
+  border-top: 0;
+}
+
+.comparison-table__row:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.comparison-table__row > span {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.comparison-table__row > span:not(:first-child) {
+  text-align: center;
+  font-size: 16px;
+}
+
+.comparison-check {
+  color: #3a6b3a;
+  font-weight: 700;
+}
+
+.comparison-x {
+  color: #7a4444;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .comparison-table__header,
+  .comparison-table__row {
+    grid-template-columns: 1fr 80px 80px;
+  }
+}
+
 /* --- Whitepaper layout --- */
 
 .whitepaper-layout {
@@ -982,4 +1191,157 @@ textarea {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* --- Vote distribution bar --- */
+
+.vote-bar {
+  display: flex;
+  height: 14px;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.vote-bar__segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.vote-bar__segment--yes {
+  background: #4a6b4a;
+}
+
+.vote-bar__segment--no {
+  background: #7a4444;
+}
+
+.vote-bar__segment--abstain {
+  background: #888888;
+}
+
+/* --- Quadratic cost indicator --- */
+
+.qv-cost-indicator {
+  margin-top: 10px;
+  border: 1px dashed var(--line-strong);
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.qv-cost-indicator > .mini {
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.qv-cost-indicator__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.qv-cost-indicator__values strong {
+  color: var(--fg);
+}
+
+/* --- Reputation slider enhancements --- */
+
+.rep-weight {
+  font-size: 10px;
+  color: var(--muted-soft);
+}
+
+.rep-slider-track {
+  position: relative;
+  min-width: 0;
+}
+
+.rep-slider-track .rep-bar-track {
+  pointer-events: none;
+}
+
+.rep-range-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.rep-slider-track:hover .rep-bar-fill {
+  background: #333;
+}
+
+/* --- Audit trail expandable entries --- */
+
+.audit-entry-details {
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.015);
+  padding: 0;
+}
+
+.audit-entry-details > summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  cursor: pointer;
+  list-style: none;
+}
+
+.audit-entry-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.audit-entry-details > summary::marker {
+  content: "";
+}
+
+.audit-entry-details[open] > summary {
+  border-bottom: 1px dashed var(--line);
+}
+
+.audit-expanded {
+  padding: 10px 12px;
+}
+
+.audit-expanded__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.audit-copy-btn {
+  min-height: 26px !important;
+  padding: 2px 10px !important;
+  font-size: 11px !important;
+}
+
+.audit-expanded__json {
+  margin: 0;
+  padding: 10px;
+  border: 1px dashed var(--line-strong);
+  background: rgba(0, 0, 0, 0.02);
+  font-size: 11px;
+  overflow-x: auto;
+  max-height: 240px;
+  overflow-y: auto;
 }

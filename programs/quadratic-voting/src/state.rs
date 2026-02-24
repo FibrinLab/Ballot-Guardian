@@ -1,18 +1,32 @@
 //! Account state and shared types for the quadratic-voting program.
 
-use anchor_lang::prelude::*;
+use borsh::{BorshDeserialize, BorshSerialize};
+use solana_program::pubkey::Pubkey;
 
-use crate::errors::QuadraticVotingError;
+use crate::error::QuadraticVotingError;
+use solana_program::program_error::ProgramError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
-pub enum VoteChoice {
-    Yes,
-    No,
-    Abstain,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+pub enum AccountTag {
+    Uninitialized = 0,
+    QuadraticBallot = 1,
+    VoterAllocation = 2,
 }
 
-#[account]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[borsh(use_discriminant = true)]
+#[repr(u8)]
+pub enum VoteChoice {
+    Yes = 0,
+    No = 1,
+    Abstain = 2,
+}
+
+#[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize)]
 pub struct QuadraticBallot {
+    pub tag: u8,
     pub authority: Pubkey,
     pub realm: Pubkey,
     pub proposal: Pubkey,
@@ -31,9 +45,13 @@ pub struct QuadraticBallot {
 
 impl QuadraticBallot {
     pub const LEN: usize =
-        32 + 32 + 32 + 1 + 2 + 2 + 8 + 8 + 1 + 4 + 8 + 16 + 16 + 16;
+        1 + 32 + 32 + 32 + 1 + 2 + 2 + 8 + 8 + 1 + 4 + 8 + 16 + 16 + 16;
 
-    pub fn add_tally(&mut self, choice: VoteChoice, weighted_increment_scaled: u128) -> Result<()> {
+    pub fn add_tally(
+        &mut self,
+        choice: VoteChoice,
+        weighted_increment_scaled: u128,
+    ) -> Result<(), ProgramError> {
         match choice {
             VoteChoice::Yes => {
                 self.yes_tally_scaled = self
@@ -58,8 +76,9 @@ impl QuadraticBallot {
     }
 }
 
-#[account]
+#[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize)]
 pub struct VoterAllocation {
+    pub tag: u8,
     pub ballot: Pubkey,
     pub voter: Pubkey,
     pub bump: u8,
@@ -73,7 +92,7 @@ pub struct VoterAllocation {
 }
 
 impl VoterAllocation {
-    pub const LEN: usize = 32 + 32 + 1 + 2 + 8 + 8 + 4 + 4 + 4 + 8;
+    pub const LEN: usize = 1 + 32 + 32 + 1 + 2 + 8 + 8 + 4 + 4 + 4 + 8;
 
     pub fn votes_for_choice(&self, choice: VoteChoice) -> u32 {
         match choice {

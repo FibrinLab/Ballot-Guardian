@@ -1,6 +1,6 @@
 # Ballot Guardian
 
-Reputation-weighted quadratic voting for Solana Realms DAOs.
+**Built by an NHS junior doctor** to fix broken union ballot processes. The BMA represents 190,000+ doctors and still runs strike ballots by post. Ballot Guardian brings wallet-signed, quadratic, reputation-weighted voting to Solana Realms.
 
 ```
     +---------------------------+
@@ -28,6 +28,20 @@ Reputation-weighted quadratic voting for Solana Realms DAOs.
 | - cast_vote()  |  | - recompute()      |
 +----------------+  +--------------------+
 ```
+
+---
+
+## Demo
+
+**Judges**: start at `/dapp` -- it opens with a pre-populated BMA Junior Doctors scenario (industrial action ballot with sample votes).
+
+1. **Connect wallet** -- open `/dapp`, connect Phantom (Solana devnet)
+2. **Explore pre-loaded ballots** -- two proposals with live vote tallies
+3. **Register a new union/DAO** -- fill in name + description, sign with wallet
+4. **Create a ballot** -- add a proposal question and voting window
+5. **Cast a vote** -- select Yes / No / Abstain, sign with wallet
+6. **View audit trail** -- scroll down to see all wallet-signed actions with truncated signatures
+7. **View reputation** -- reputation dashboard shows multiplier computation from five scoring components
 
 ---
 
@@ -64,17 +78,6 @@ For full Anchor workflows (`anchor build`, IDL generation), install `anchor-cli`
 
 ---
 
-## Demo Flow
-
-1. **Connect wallet** -- open `/dapp`, connect Phantom (Solana devnet)
-2. **Register a union/DAO** -- fill in name + description, sign with wallet
-3. **Create a ballot** -- add a proposal question and voting window
-4. **Cast a vote** -- select Yes / No / Abstain, sign with wallet
-5. **View audit trail** -- scroll down to see all wallet-signed actions with truncated signatures
-6. **View reputation** -- simulated reputation dashboard shows multiplier computation
-
----
-
 ## Realms Integration
 
 Ballot Guardian is a **Voter Weight Plugin**, not a fork of SPL Governance. Realms keeps proposals and execution; we add vote weight logic.
@@ -105,4 +108,7 @@ web/
   app/                    -- Next.js app router (landing, dapp, whitepaper)
   app/components/         -- TypewriterHeadline, MathCalculator, NetworkStatus,
                              ReputationDashboard, AuditTrail, WalletConnectButton
+  lib/demoStore.js        -- Local demo store with seeded BMA scenario
+  lib/anchor.js           -- Anchor client plumbing (ready for program IDs + IDLs)
+  lib/idl/                -- Drop IDL JSONs here after `anchor build`
 ```

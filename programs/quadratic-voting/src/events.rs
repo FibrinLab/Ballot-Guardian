@@ -1,10 +1,11 @@
 //! Events emitted by the quadratic-voting program.
 
-use anchor_lang::prelude::*;
+use borsh::BorshSerialize;
+use solana_program::{log::sol_log_data, pubkey::Pubkey};
 
 use crate::state::VoteChoice;
 
-#[event]
+#[derive(BorshSerialize)]
 pub struct BallotInitializedEvent {
     pub ballot: Pubkey,
     pub realm: Pubkey,
@@ -14,7 +15,7 @@ pub struct BallotInitializedEvent {
     pub voting_ends_at: i64,
 }
 
-#[event]
+#[derive(BorshSerialize)]
 pub struct VoterRegisteredEvent {
     pub ballot: Pubkey,
     pub voter: Pubkey,
@@ -22,7 +23,7 @@ pub struct VoterRegisteredEvent {
     pub reputation_multiplier_bps: u16,
 }
 
-#[event]
+#[derive(BorshSerialize)]
 pub struct VoteCastEvent {
     pub ballot: Pubkey,
     pub voter: Pubkey,
@@ -34,10 +35,15 @@ pub struct VoteCastEvent {
     pub weighted_increment_scaled: u128,
 }
 
-#[event]
+#[derive(BorshSerialize)]
 pub struct BallotFinalizedEvent {
     pub ballot: Pubkey,
     pub yes_tally_scaled: u128,
     pub no_tally_scaled: u128,
     pub abstain_tally_scaled: u128,
+}
+
+pub fn emit_event<T: BorshSerialize>(event: &T) {
+    let data = borsh::to_vec(event).unwrap();
+    sol_log_data(&[&data]);
 }

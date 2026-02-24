@@ -13,6 +13,87 @@ export function createEmptyDemoStore() {
   };
 }
 
+export function createSeededDemoStore() {
+  const now = new Date();
+  const h48 = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+  const h24 = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const createdAt = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+
+  return {
+    version: 1,
+    daos: [
+      {
+        id: "dao_seed-bma-jdc",
+        name: "BMA Junior Doctors Committee",
+        slug: "bma-junior-doctors-committee",
+        description:
+          "The professional body representing over 190,000 doctors across the UK. This committee oversees ballot governance for junior doctor members.",
+        createdAt,
+        createdBy: "7xKX...demoSeed",
+        proof: null,
+        proposals: [
+          {
+            id: "prop_seed-industrial-action",
+            question:
+              "Should the BMA authorise industrial action over pay restoration?",
+            description:
+              "Following failed negotiations with the Department of Health, this ballot seeks member authorisation for a programme of industrial action to secure pay restoration to 2008 levels.",
+            createdAt,
+            closesAt: h48,
+            createdBy: "7xKX...demoSeed",
+            proof: null,
+            choices: DEFAULT_PROPOSAL_CHOICES,
+            votes: [
+              {
+                id: "vote_seed-1",
+                voter: "3aFb...voter1",
+                choiceId: "yes",
+                castAt: new Date(now.getTime() - 90 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-2",
+                voter: "9kRm...voter2",
+                choiceId: "yes",
+                castAt: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-3",
+                voter: "Dp7Q...voter3",
+                choiceId: "no",
+                castAt: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+            ],
+          },
+          {
+            id: "prop_seed-governance-charter",
+            question:
+              "Should the committee adopt the new governance charter?",
+            description:
+              "Proposal to replace the existing committee governance framework with an updated charter that includes on-chain voting procedures and transparent audit trails.",
+            createdAt,
+            closesAt: h24,
+            createdBy: "7xKX...demoSeed",
+            proof: null,
+            choices: DEFAULT_PROPOSAL_CHOICES,
+            votes: [
+              {
+                id: "vote_seed-4",
+                voter: "3aFb...voter1",
+                choiceId: "yes",
+                castAt: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 export function loadDemoStore() {
   if (typeof window === "undefined") {
     return createEmptyDemoStore();
@@ -20,11 +101,11 @@ export function loadDemoStore() {
 
   try {
     const raw = window.localStorage.getItem(DEMO_STORE_KEY);
-    if (!raw) return createEmptyDemoStore();
+    if (!raw) return createSeededDemoStore();
 
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.daos)) {
-      return createEmptyDemoStore();
+      return createSeededDemoStore();
     }
 
     return {
@@ -32,7 +113,7 @@ export function loadDemoStore() {
       daos: parsed.daos,
     };
   } catch {
-    return createEmptyDemoStore();
+    return createSeededDemoStore();
   }
 }
 

@@ -1,13 +1,16 @@
 //! Pure math helpers for the realms-adapter program.
 
-use anchor_lang::prelude::*;
+use solana_program::program_error::ProgramError;
 
-use crate::errors::RealmsAdapterError;
+use crate::error::RealmsAdapterError;
 
-pub(crate) fn compute_effective_weight(qv_component: u64, reputation_multiplier_bps: u16) -> Result<u64> {
+pub(crate) fn compute_effective_weight(
+    qv_component: u64,
+    reputation_multiplier_bps: u16,
+) -> Result<u64, ProgramError> {
     let scaled = (qv_component as u128)
         .checked_mul(reputation_multiplier_bps as u128)
-        .ok_or(RealmsAdapterError::MathOverflow)?;
+        .ok_or(ProgramError::from(RealmsAdapterError::MathOverflow))?;
     let weight = scaled / 10_000u128;
     u64::try_from(weight).map_err(|_| RealmsAdapterError::MathOverflow.into())
 }

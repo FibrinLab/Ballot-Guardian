@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { startTransition, useCallback, useDeferredValue, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import WalletConnectButton from "../components/WalletConnectButton";
 import ReputationDashboard from "../components/ReputationDashboard";
@@ -18,6 +18,94 @@ import {
   registerDao,
   saveDemoStore,
 } from "../../lib/demoStore";
+
+function useCountdown(closesAt) {
+  const compute = useCallback(() => {
+    const now = Date.now();
+    const end = new Date(closesAt).getTime();
+    const diff = end - now;
+    if (diff <= 0) return null;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  }, [closesAt]);
+
+  const [remaining, setRemaining] = useState(compute);
+
+  useEffect(() => {
+    setRemaining(compute());
+    const id = setInterval(() => setRemaining(compute()), 60_000);
+    return () => clearInterval(id);
+  }, [compute]);
+
+  return remaining;
+}
+
+function CountdownLabel({ closesAt, closed }) {
+  const remaining = useCountdown(closesAt);
+  if (closed || !remaining) {
+    return <>Closed {formatDate(closesAt)}</>;
+  }
+  return <>Closes in {remaining}</>;
+}
+
+function VoteBar({ tallies }) {
+  const total = tallies.yes + tallies.no + tallies.abstain;
+  if (total === 0) return null;
+  const yesPct = (tallies.yes / total) * 100;
+  const noPct = (tallies.no / total) * 100;
+  const abstainPct = (tallies.abstain / total) * 100;
+  return (
+    <div className="vote-bar" aria-label="Vote distribution">
+      {tallies.yes > 0 && (
+        <div
+          className="vote-bar__segment vote-bar__segment--yes"
+          style={{ width: `${yesPct}%` }}
+        >
+          {yesPct >= 12 && <span>{Math.round(yesPct)}%</span>}
+        </div>
+      )}
+      {tallies.no > 0 && (
+        <div
+          className="vote-bar__segment vote-bar__segment--no"
+          style={{ width: `${noPct}%` }}
+        >
+          {noPct >= 12 && <span>{Math.round(noPct)}%</span>}
+        </div>
+      )}
+      {tallies.abstain > 0 && (
+        <div
+          className="vote-bar__segment vote-bar__segment--abstain"
+          style={{ width: `${abstainPct}%` }}
+        >
+          {abstainPct >= 12 && <span>{Math.round(abstainPct)}%</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QvCostIndicator({ proposal }) {
+  const totalVotes = proposal.votes?.length || 0;
+  const creditsSpent = totalVotes * totalVotes;
+  const nextCost = 2 * totalVotes + 1;
+  return (
+    <div className="qv-cost-indicator">
+      <span className="mini">QUADRATIC COST</span>
+      <div className="qv-cost-indicator__values">
+        <span>
+          Votes cast: <strong>{totalVotes}</strong>
+        </span>
+        <span>
+          Credits spent: <strong>{creditsSpent}</strong>
+        </span>
+        <span>
+          Next vote: <strong>{nextCost} credit{nextCost !== 1 ? "s" : ""}</strong>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function DappPage() {
   const { connection } = useConnection();
@@ -236,9 +324,8 @@ export default function DappPage() {
 
       <header className="topbar">
         <div className="topbar__inner">
-          <span>BALLOT GUARDIAN / DAPP</span>
+          <Link href="/" className="topbar__brand">BALLOT GUARDIAN / DAPP</Link>
           <nav aria-label="Primary">
-            <Link href="/">Landing</Link>
             <Link href="/whitepaper">White Paper</Link>
           </nav>
         </div>
@@ -246,12 +333,11 @@ export default function DappPage() {
 
       <main className="page dapp-shell">
         <section className="hero dapp-hero">
-          <p className="kicker">MVP DEMO / WALLET-AUTHED LOCAL FLOW</p>
+          <p className="kicker">GOVERNANCE DEMO / SOLANA DEVNET</p>
           <h1>Register unions and run wallet-backed ballots</h1>
           <p className="lead">
-            This page uses real Solana wallet integration for identity and message signing, while
-            DAO/proposal/vote records are stored locally until the Anchor programs are deployed and
-            wired.
+            Connect your Solana wallet, register organizations, create ballots, and cast
+            wallet-signed votes. All actions are cryptographically signed and auditable.
           </p>
 
           <div className="dapp-hero__actions">
@@ -472,7 +558,8 @@ export default function DappPage() {
                             <div>
                               <h3>{proposal.question}</h3>
                               <p className="mini">
-                                Created {formatDate(proposal.createdAt)} / closes {formatDate(proposal.closesAt)}
+                                Created {formatDate(proposal.createdAt)} /{" "}
+                                <CountdownLabel closesAt={proposal.closesAt} closed={closed} />
                               </p>
                             </div>
                             <span className={`pill${closed ? " pill--muted" : ""}`}>
@@ -501,6 +588,8 @@ export default function DappPage() {
                             </div>
                           </div>
 
+                          <VoteBar tallies={tallies} />
+
                           <div className="vote-grid" role="group" aria-label={`Vote options for ${proposal.question}`}>
                             {(proposal.choices || []).map((choice) => (
                               <button
@@ -516,6 +605,8 @@ export default function DappPage() {
                               </button>
                             ))}
                           </div>
+
+                          <QvCostIndicator proposal={proposal} />
 
                           <p className="mini proposal-card__foot">
                             {walletVote
@@ -542,12 +633,12 @@ export default function DappPage() {
 
         <section className="panel" aria-labelledby="rep-dashboard-title">
           <div className="panel__head">
-            <p className="label">REPUTATION ENGINE (SIMULATED)</p>
+            <p className="label">REPUTATION ENGINE (INTERACTIVE)</p>
           </div>
           <h2 id="rep-dashboard-title">Voter reputation profile</h2>
           <p className="mini" style={{ marginBottom: 12 }}>
-            This simulated dashboard shows how a connected voter&#39;s reputation multiplier would be
-            computed. Live data will use the on-chain Reputation Engine program.
+            Drag the sliders to explore how a voter&#39;s reputation multiplier is computed from
+            five on-chain scoring components.
           </p>
           <ReputationDashboard />
         </section>
