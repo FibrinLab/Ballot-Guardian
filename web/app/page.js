@@ -41,7 +41,7 @@ export default function LandingPage() {
             <article className="subpanel">
               <h2>1. Connect Wallet</h2>
               <p>
-                Use Phantom / Solflare / Backpack to authenticate as a member or organizer.
+                Use Phantom wallet to authenticate as a member or organizer.
               </p>
             </article>
             <article className="subpanel">

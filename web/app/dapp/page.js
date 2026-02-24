@@ -23,6 +23,7 @@ export default function DappPage() {
 
   const [store, setStore] = useState(createEmptyDemoStore);
   const [hydrated, setHydrated] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [selectedDaoId, setSelectedDaoId] = useState(null);
   const [balanceLamports, setBalanceLamports] = useState(null);
   const [status, setStatus] = useState(null);
@@ -53,6 +54,10 @@ export default function DappPage() {
       (dao.slug || "").toLowerCase().includes(q)
     );
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const nextStore = loadDemoStore();
@@ -265,7 +270,9 @@ export default function DappPage() {
               <p className="mono-value">
                 {walletAddress ? compactAddress(walletAddress) : "Not connected"}
               </p>
-              <p className="mini">{wallet?.adapter?.name || "No wallet selected"}</p>
+              <p className="mini" suppressHydrationWarning>
+                {mounted ? (wallet?.adapter?.name || "No wallet selected") : "No wallet selected"}
+              </p>
             </div>
             <div className="subpanel">
               <p className="label">SIGN MESSAGE</p>
