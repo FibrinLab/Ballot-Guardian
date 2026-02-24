@@ -26,7 +26,7 @@ pub struct CouncilOverrideUpdatedEvent {
 #[derive(BorshSerialize)]
 pub struct VoterWeightRecordRefreshedEvent {
     pub proposal: Pubkey,
-    pub voter: Pubkey,
+    pub governing_token_owner: Pubkey,
     pub voter_weight: u64,
     pub qv_component: u64,
     pub reputation_multiplier_bps: u16,

@@ -150,6 +150,61 @@ export function registerDao(store, input) {
   };
 }
 
+export function deleteDao(store, input) {
+  const { daoId, caller } = input;
+  if (!daoId) throw new Error("No DAO selected.");
+  if (!caller) throw new Error("Wallet address is required.");
+
+  const dao = store.daos.find((d) => d.id === daoId);
+  if (!dao) throw new Error("DAO not found.");
+  if (dao.createdBy !== caller) {
+    throw new Error("Only the creator can delete this organization.");
+  }
+
+  return {
+    store: {
+      ...store,
+      daos: store.daos.filter((d) => d.id !== daoId),
+    },
+  };
+}
+
+export function closeBallot(store, input) {
+  const { daoId, proposalId, caller } = input;
+  if (!daoId || !proposalId) throw new Error("Missing proposal selection.");
+  if (!caller) throw new Error("Wallet address is required.");
+
+  let found = false;
+
+  const daos = store.daos.map((dao) => {
+    if (dao.id !== daoId) return dao;
+
+    return {
+      ...dao,
+      proposals: (dao.proposals || []).map((proposal) => {
+        if (proposal.id !== proposalId) return proposal;
+        found = true;
+
+        if (proposal.createdBy !== caller) {
+          throw new Error("Only the ballot creator can close this ballot.");
+        }
+        if (isProposalClosed(proposal)) {
+          throw new Error("This ballot is already closed.");
+        }
+
+        return {
+          ...proposal,
+          closesAt: new Date().toISOString(),
+        };
+      }),
+    };
+  });
+
+  if (!found) throw new Error("Proposal not found.");
+
+  return { store: { ...store, daos } };
+}
+
 export function createProposal(store, input) {
   const daoId = input.daoId;
   const question = normalizeText(input.question);

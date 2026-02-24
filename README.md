@@ -45,13 +45,13 @@
 
 ---
 
-## Programs
+## Deployed Programs (Solana Devnet)
 
-| Program | Instructions | Purpose |
-|---------|-------------|---------|
-| **quadratic-voting** | `initialize_ballot`, `register_voter`, `update_voter_reputation_snapshot`, `cast_vote`, `finalize_ballot` | Quadratic credit spend, reputation-scaled tallies |
-| **reputation-engine** | `initialize_realm_config`, `set_oracle_authority`, `create_profile`, `apply_component_delta`, `apply_penalty`, `recalculate_profile`, `snapshot_multiplier` | Behavior-based scoring, bounded multiplier computation |
-| **realms-adapter** | `initialize_adapter`, `bind_proposal`, `set_council_override`, `create_voter_weight_record`, `refresh_voter_weight_record` | Binds Realms proposals to QV ballots, publishes voter weight records |
+| Program | Address | Instructions |
+|---------|---------|-------------|
+| **quadratic-voting** | [`346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp`](https://explorer.solana.com/address/346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp?cluster=devnet) | `initialize_ballot`, `register_voter`, `update_voter_reputation_snapshot`, `cast_vote`, `finalize_ballot` |
+| **reputation-engine** | [`8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA`](https://explorer.solana.com/address/8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA?cluster=devnet) | `initialize_realm_config`, `set_oracle_authority`, `create_profile`, `apply_component_delta`, `apply_penalty`, `recalculate_profile`, `snapshot_multiplier` |
+| **realms-adapter** | [`E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky`](https://explorer.solana.com/address/E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky?cluster=devnet) | `initialize_adapter`, `bind_proposal`, `set_council_override`, `create_voter_weight_record`, `refresh_voter_weight_record` |
 
 All three programs follow the same modular layout: `state.rs`, `errors.rs`, `events.rs`, and math/helper modules.
 
@@ -70,11 +70,12 @@ Open `http://localhost:3000`. Routes: `/` landing, `/dapp` wallet + union/ballot
 ### Contracts
 
 ```bash
-cargo check
-cargo test
+cargo test                                   # unit + integration tests (52 tests)
+cargo build-sbf                              # build .so programs for deployment
+solana program deploy target/deploy/<name>.so --program-id target/deploy/<name>-keypair.json
 ```
 
-For full Anchor workflows (`anchor build`, IDL generation), install `anchor-cli`.
+> **Note:** `cargo build-sbf` requires temporarily commenting out `tests/integration` and `examples` from the workspace members in `Cargo.toml` (their `solana-client`/`solana-sdk` transitive deps use `edition2024` which is incompatible with the SBF toolchain's Cargo 1.84).
 
 ---
 
@@ -104,11 +105,15 @@ programs/
   quadratic-voting/src/   -- lib.rs, state.rs, errors.rs, events.rs, math.rs
   reputation-engine/src/  -- lib.rs, state.rs, errors.rs, events.rs, helpers.rs
   realms-adapter/src/     -- lib.rs, state.rs, errors.rs, events.rs, math.rs
+tests/
+  integration/            -- 52 LiteSVM integration tests (cross-program, per-program)
+examples/
+  client_demo.rs          -- End-to-end demo invoking all 3 programs
 web/
   app/                    -- Next.js app router (landing, dapp, whitepaper)
   app/components/         -- TypewriterHeadline, MathCalculator, NetworkStatus,
                              ReputationDashboard, AuditTrail, WalletConnectButton
   lib/demoStore.js        -- Local demo store with seeded BMA scenario
-  lib/anchor.js           -- Anchor client plumbing (ready for program IDs + IDLs)
+  lib/anchor.js           -- Solana client plumbing with deployed program IDs
   lib/idl/                -- Drop IDL JSONs here after `anchor build`
 ```

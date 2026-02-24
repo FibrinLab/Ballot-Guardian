@@ -1,8 +1,13 @@
 [workspace]
+# NOTE: For `cargo build-sbf`, temporarily comment out tests/examples
+# (their solana-client/solana-sdk deps have edition2024 transitive crates
+# incompatible with the SBF toolchain's Cargo 1.84).
 members = [
   "programs/quadratic-voting",
   "programs/reputation-engine",
   "programs/realms-adapter",
+  "tests/integration",
+  "examples",
 ]
 resolver = "2"
 

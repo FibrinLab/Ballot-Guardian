@@ -110,7 +110,7 @@ pub fn process_bind_proposal(
 
     let config = AdapterConfig::try_from_slice(&config_info.data.borrow())?;
     if config.tag != AccountTag::AdapterConfig as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
     if config.admin != *admin_info.key {
         return Err(RealmsAdapterError::Unauthorized.into());
@@ -202,7 +202,7 @@ pub fn process_set_council_override(
 
     let config = AdapterConfig::try_from_slice(&config_info.data.borrow())?;
     if config.tag != AccountTag::AdapterConfig as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
 
     let signer = *authority_info.key;
@@ -225,7 +225,7 @@ pub fn process_set_council_override(
 
     let mut binding = ProposalBinding::try_from_slice(&binding_info.data.borrow())?;
     if binding.tag != AccountTag::ProposalBinding as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
     if binding.adapter_config != *config_info.key {
         return Err(RealmsAdapterError::BindingConfigMismatch.into());
@@ -275,7 +275,7 @@ pub fn process_create_voter_weight_record(
 
     let config = AdapterConfig::try_from_slice(&config_info.data.borrow())?;
     if config.tag != AccountTag::AdapterConfig as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
 
     // Verify binding PDA
@@ -293,7 +293,7 @@ pub fn process_create_voter_weight_record(
 
     let binding = ProposalBinding::try_from_slice(&binding_info.data.borrow())?;
     if binding.tag != AccountTag::ProposalBinding as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
     if binding.adapter_config != *config_info.key {
         return Err(RealmsAdapterError::BindingConfigMismatch.into());
@@ -342,14 +342,16 @@ pub fn process_create_voter_weight_record(
 
     let clock = Clock::get()?;
     let record = PluginVoterWeightRecord {
-        tag: AccountTag::PluginVoterWeightRecord as u8,
-        binding: *binding_info.key,
-        voter: *voter_info.key,
+        realm: config.realm,
         governing_token_mint: binding.governing_token_mint,
-        bump,
+        governing_token_owner: *voter_info.key,
         voter_weight: 0,
-        voter_weight_expiry_slot: None,
+        voter_weight_expiry: None,
+        weight_action: None,
         weight_action_target: None,
+        reserved: [0u8; 8],
+        binding: *binding_info.key,
+        bump,
         token_amount_allocated: 0,
         qv_votes_allocated: 0,
         reputation_multiplier_bps: 0,
@@ -389,7 +391,7 @@ pub fn process_refresh_voter_weight_record(
 
     let config = AdapterConfig::try_from_slice(&config_info.data.borrow())?;
     if config.tag != AccountTag::AdapterConfig as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
     if args.reputation_multiplier_bps < config.min_reputation_bps
         || args.reputation_multiplier_bps > config.max_reputation_bps
@@ -412,7 +414,7 @@ pub fn process_refresh_voter_weight_record(
 
     let mut binding = ProposalBinding::try_from_slice(&binding_info.data.borrow())?;
     if binding.tag != AccountTag::ProposalBinding as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
+        return Err(RealmsAdapterError::InvalidDiscriminator.into());
     }
     if binding.adapter_config != *config_info.key {
         return Err(RealmsAdapterError::BindingConfigMismatch.into());
@@ -434,14 +436,12 @@ pub fn process_refresh_voter_weight_record(
         return Err(ProgramError::InvalidSeeds);
     }
 
-    let mut record = PluginVoterWeightRecord::try_from_slice(&record_info.data.borrow())?;
-    if record.tag != AccountTag::PluginVoterWeightRecord as u8 {
-        return Err(RealmsAdapterError::InvalidAccountTag.into());
-    }
+    let mut record =
+        PluginVoterWeightRecord::deserialize(&mut &record_info.data.borrow()[..])?;
     if record.binding != *binding_info.key {
         return Err(RealmsAdapterError::WeightRecordBindingMismatch.into());
     }
-    if record.voter != *voter_info.key {
+    if record.governing_token_owner != *voter_info.key {
         return Err(RealmsAdapterError::WeightRecordVoterMismatch.into());
     }
     if record.governing_token_mint != binding.governing_token_mint {
@@ -457,13 +457,14 @@ pub fn process_refresh_voter_weight_record(
     let effective_weight =
         compute_effective_weight(qv_component, args.reputation_multiplier_bps)?;
     let expiry_slot = args
-        .voter_weight_expiry_slot
+        .voter_weight_expiry
         .or(Some(binding.default_weight_expiry_slot))
         .filter(|slot| *slot > 0);
 
     let clock = Clock::get()?;
     record.voter_weight = effective_weight;
-    record.voter_weight_expiry_slot = expiry_slot;
+    record.voter_weight_expiry = expiry_slot;
+    record.weight_action = args.weight_action;
     record.weight_action_target = args.weight_action_target;
     record.token_amount_allocated = args.token_amount_allocated;
     record.qv_votes_allocated = args.qv_votes_allocated;
@@ -478,7 +479,7 @@ pub fn process_refresh_voter_weight_record(
 
     emit_event(&VoterWeightRecordRefreshedEvent {
         proposal: binding.proposal,
-        voter: record.voter,
+        governing_token_owner: record.governing_token_owner,
         voter_weight: record.voter_weight,
         qv_component,
         reputation_multiplier_bps: record.reputation_multiplier_bps,

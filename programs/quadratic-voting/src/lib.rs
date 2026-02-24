@@ -20,8 +20,7 @@ pub use instruction::*;
 pub use math::*;
 pub use state::*;
 
-// TODO: Replace with deployed program ID
-declare_id!("11111111111111111111111111111111");
+declare_id!("346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_instruction);

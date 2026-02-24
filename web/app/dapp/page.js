@@ -8,8 +8,10 @@ import ReputationDashboard from "../components/ReputationDashboard";
 import AuditTrail from "../components/AuditTrail";
 import {
   castVote,
+  closeBallot,
   createEmptyDemoStore,
   createProposal,
+  deleteDao,
   getDaoById,
   getProposalTallies,
   getWalletVote,
@@ -318,6 +320,58 @@ export default function DappPage() {
     }
   }
 
+  async function handleDeleteDao(daoId) {
+    try {
+      setBusyAction("delete-dao");
+      setStatus(null);
+
+      const proof = await signActionProof("delete_dao", { daoId });
+
+      const result = deleteDao(store, {
+        daoId,
+        caller: walletAddress,
+        proof,
+      });
+
+      startTransition(() => {
+        setStore(result.store);
+        setSelectedDaoId(result.store.daos[0]?.id || null);
+      });
+
+      setStatus({ tone: "ok", text: "Organization deleted." });
+    } catch (error) {
+      setStatus({ tone: "error", text: toErrorText(error, "Could not delete organization.") });
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  async function handleCloseBallot(proposal) {
+    try {
+      setBusyAction(`close-${proposal.id}`);
+      setStatus(null);
+
+      const proof = await signActionProof("close_ballot", {
+        daoId: selectedDaoId,
+        proposalId: proposal.id,
+      });
+
+      const result = closeBallot(store, {
+        daoId: selectedDaoId,
+        proposalId: proposal.id,
+        caller: walletAddress,
+        proof,
+      });
+
+      startTransition(() => setStore(result.store));
+      setStatus({ tone: "ok", text: "Ballot closed." });
+    } catch (error) {
+      setStatus({ tone: "error", text: toErrorText(error, "Could not close ballot.") });
+    } finally {
+      setBusyAction("");
+    }
+  }
+
   return (
     <>
       <div className="scanline" aria-hidden="true" />
@@ -452,18 +506,37 @@ export default function DappPage() {
               ) : (
                 filteredDaos.map((dao) => {
                   const isSelected = dao.id === selectedDaoId;
+                  const isCreator = walletAddress && dao.createdBy === walletAddress;
                   return (
-                    <button
+                    <div
                       key={dao.id}
-                      type="button"
                       className={`dao-card${isSelected ? " is-active" : ""}`}
                       onClick={() => setSelectedDaoId(dao.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter") setSelectedDaoId(dao.id); }}
                     >
-                      <span className="dao-card__name">{dao.name}</span>
-                      <span className="dao-card__meta">
-                        {dao.proposals?.length || 0} ballots / {compactAddress(dao.createdBy)}
-                      </span>
-                    </button>
+                      <div className="dao-card__info">
+                        <span className="dao-card__name">{dao.name}</span>
+                        <span className="dao-card__meta">
+                          {dao.proposals?.length || 0} ballots / {compactAddress(dao.createdBy)}
+                        </span>
+                      </div>
+                      {isCreator && (
+                        <button
+                          type="button"
+                          className="dao-card__delete"
+                          title="Delete organization"
+                          disabled={busyAction === "delete-dao"}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDao(dao.id);
+                          }}
+                        >
+                          &times;
+                        </button>
+                      )}
+                    </div>
                   );
                 })
               )}
@@ -551,6 +624,7 @@ export default function DappPage() {
                       const tallies = getProposalTallies(proposal);
                       const walletVote = getWalletVote(proposal, walletAddress);
                       const closed = isProposalClosed(proposal);
+                      const isBallotCreator = walletAddress && proposal.createdBy === walletAddress;
 
                       return (
                         <article key={proposal.id} className="proposal-card">
@@ -562,9 +636,21 @@ export default function DappPage() {
                                 <CountdownLabel closesAt={proposal.closesAt} closed={closed} />
                               </p>
                             </div>
-                            <span className={`pill${closed ? " pill--muted" : ""}`}>
-                              {closed ? "Closed" : "Open"}
-                            </span>
+                            <div className="proposal-card__actions">
+                              {isBallotCreator && !closed && (
+                                <button
+                                  type="button"
+                                  className="pill pill--action"
+                                  disabled={busyAction === `close-${proposal.id}`}
+                                  onClick={() => handleCloseBallot(proposal)}
+                                >
+                                  {busyAction === `close-${proposal.id}` ? "Closing..." : "Close Ballot"}
+                                </button>
+                              )}
+                              <span className={`pill${closed ? " pill--muted" : ""}`}>
+                                {closed ? "Closed" : "Open"}
+                              </span>
+                            </div>
                           </div>
 
                           {proposal.description ? <p>{proposal.description}</p> : null}

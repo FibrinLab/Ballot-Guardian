@@ -14,7 +14,7 @@ pub enum RealmsAdapterError {
     WeightRecordVoterMismatch = 6,
     MintMismatch = 7,
     CouncilOverrideDisabled = 8,
-    InvalidAccountTag = 9,
+    InvalidDiscriminator = 9,
     InvalidAccountOwner = 10,
 }
 

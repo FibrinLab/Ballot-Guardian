@@ -3,6 +3,8 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
+use crate::state::VoterWeightAction;
+
 #[derive(Debug, BorshSerialize, BorshDeserialize)]
 pub enum RealmsAdapterInstruction {
     /// Initialize the adapter configuration for a realm.
@@ -80,6 +82,7 @@ pub struct RefreshVoterWeightArgs {
     pub token_amount_allocated: u64,
     pub qv_votes_allocated: u32,
     pub reputation_multiplier_bps: u16,
-    pub voter_weight_expiry_slot: Option<u64>,
+    pub voter_weight_expiry: Option<u64>,
+    pub weight_action: Option<VoterWeightAction>,
     pub weight_action_target: Option<Pubkey>,
 }

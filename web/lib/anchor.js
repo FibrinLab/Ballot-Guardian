@@ -1,20 +1,19 @@
 /**
  * Solana client plumbing for Ballot Guardian.
  *
- * After deploying the native programs to devnet:
- * 1. Fill in the PROGRAM_IDS below with the deployed addresses.
- * 2. Build transaction instructions using @solana/web3.js TransactionInstruction.
+ * Programs are deployed to Solana devnet. Build transaction instructions
+ * using @solana/web3.js TransactionInstruction via the helpers below.
  */
 
 import { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 
 /**
- * Program IDs -- replace with deployed addresses after deployment.
+ * Program IDs -- deployed to Solana devnet.
  */
 export const PROGRAM_IDS = {
-  quadraticVoting: null, // e.g. "ABcd...1234"
-  reputationEngine: null,
-  realmsAdapter: null,
+  quadraticVoting: "346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp",
+  reputationEngine: "8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA",
+  realmsAdapter: "E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky",
 };
 
 /**
