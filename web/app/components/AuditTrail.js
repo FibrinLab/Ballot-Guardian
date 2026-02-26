@@ -22,7 +22,13 @@ function badgeLabel(kind) {
   if (kind === "register_dao") return "REGISTER";
   if (kind === "create_ballot") return "BALLOT";
   if (kind === "cast_vote") return "VOTE";
+  if (kind === "close_ballot") return "CLOSE";
+  if (kind === "delete_dao") return "DELETE";
   return kind?.toUpperCase() || "ACTION";
+}
+
+function explorerTxUrl(sig) {
+  return `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 }
 
 function formatProofJson(proof) {
@@ -83,34 +89,50 @@ export default function AuditTrail({ store, daoId }) {
 
   const entries = [];
 
-  if (dao.proof) {
+  // DAO registration
+  if (dao.proof || dao.initTxSignature) {
     entries.push({
       kind: "register_dao",
-      wallet: dao.proof.wallet,
-      signatureHex: dao.proof.signatureHex,
-      signedAt: dao.proof.signedAt,
+      wallet: dao.proof?.wallet || dao.createdBy,
+      signatureHex: dao.proof?.signatureHex,
+      signedAt: dao.proof?.signedAt || dao.createdAt,
       proof: dao.proof,
+      txSignature: dao.initTxSignature,
+      onChainDetails: dao.realmPubkey
+        ? `Realm: ${compactAddress(dao.realmPubkey)}`
+        : null,
     });
   }
 
   for (const proposal of dao.proposals || []) {
-    if (proposal.proof) {
+    // Ballot creation
+    if (proposal.proof || proposal.createTxSignature) {
       entries.push({
         kind: "create_ballot",
-        wallet: proposal.proof.wallet,
-        signatureHex: proposal.proof.signatureHex,
-        signedAt: proposal.proof.signedAt,
+        wallet: proposal.proof?.wallet || proposal.createdBy,
+        signatureHex: proposal.proof?.signatureHex,
+        signedAt: proposal.proof?.signedAt || proposal.createdAt,
         proof: proposal.proof,
+        txSignature: proposal.createTxSignature,
+        onChainDetails: proposal.ballotPDA
+          ? `Ballot PDA: ${compactAddress(proposal.ballotPDA)}`
+          : null,
       });
     }
+
+    // Votes
     for (const vote of proposal.votes || []) {
-      if (vote.proof) {
+      if (vote.proof || vote.voteTxSignature) {
         entries.push({
           kind: "cast_vote",
-          wallet: vote.proof.wallet,
-          signatureHex: vote.proof.signatureHex,
-          signedAt: vote.proof.signedAt,
+          wallet: vote.proof?.wallet || vote.voter,
+          signatureHex: vote.proof?.signatureHex,
+          signedAt: vote.proof?.signedAt || vote.castAt,
           proof: vote.proof,
+          txSignature: vote.voteTxSignature,
+          onChainDetails: vote.voteTxSignature
+            ? `Choice: ${vote.choiceId}`
+            : null,
         });
       }
     }
@@ -126,33 +148,55 @@ export default function AuditTrail({ store, daoId }) {
     <div className="audit-trail" role="list" aria-label="Audit trail">
       {entries.map((entry, i) => {
         const proofJson = formatProofJson(entry.proof);
+        const hasOnChain = !!entry.txSignature;
 
         return (
           <details key={i} className="audit-entry-details" role="listitem">
             <summary className="audit-entry">
-              <span className="audit-badge">{badgeLabel(entry.kind)}</span>
+              <span className="audit-badge">
+                {badgeLabel(entry.kind)}
+                {hasOnChain && <span className="audit-badge-chain"> TX</span>}
+              </span>
               <span className="audit-detail">
                 {compactAddress(entry.wallet)} / {formatTime(entry.signedAt)}
               </span>
-              <code className="audit-sig">{compactSig(entry.signatureHex)}</code>
+              <code className="audit-sig">
+                {entry.signatureHex ? compactSig(entry.signatureHex) : hasOnChain ? compactSig(entry.txSignature) : "no sig"}
+              </code>
             </summary>
-            {proofJson ? (
-              <div className="audit-expanded">
-                <div className="audit-expanded__head">
-                  <span className="mini">Full signed proof</span>
-                  <CopyButton text={proofJson} />
+            <div className="audit-expanded">
+              {hasOnChain && (
+                <div style={{ marginBottom: 8 }}>
+                  <p className="mini" style={{ marginBottom: 4 }}>
+                    <strong>On-chain transaction</strong>
+                    {entry.onChainDetails && <> / {entry.onChainDetails}</>}
+                  </p>
+                  <a
+                    href={explorerTxUrl(entry.txSignature)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mini"
+                  >
+                    View on Solana Explorer: {compactSig(entry.txSignature)}
+                  </a>
                 </div>
-                <pre className="audit-expanded__json">
-                  <code>{proofJson}</code>
-                </pre>
-              </div>
-            ) : (
-              <div className="audit-expanded">
+              )}
+              {proofJson ? (
+                <>
+                  <div className="audit-expanded__head">
+                    <span className="mini">Wallet-signed proof</span>
+                    <CopyButton text={proofJson} />
+                  </div>
+                  <pre className="audit-expanded__json">
+                    <code>{proofJson}</code>
+                  </pre>
+                </>
+              ) : !hasOnChain ? (
                 <p className="mini">
                   No cryptographic proof attached (seeded demo data).
                 </p>
-              </div>
-            )}
+              ) : null}
+            </div>
           </details>
         );
       })}

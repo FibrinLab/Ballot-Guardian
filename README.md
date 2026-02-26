@@ -33,15 +33,16 @@
 
 ## Demo
 
-**Judges**: start at `/dapp` -- it opens with a pre-populated BMA Junior Doctors scenario (industrial action ballot with sample votes).
+**Judges**: start at `/dapp` -- every action submits a real Solana devnet transaction.
 
-1. **Connect wallet** -- open `/dapp`, connect Phantom (Solana devnet)
-2. **Explore pre-loaded ballots** -- two proposals with live vote tallies
-3. **Register a new union/DAO** -- fill in name + description, sign with wallet
-4. **Create a ballot** -- add a proposal question and voting window
-5. **Cast a vote** -- select Yes / No / Abstain, sign with wallet
-6. **View audit trail** -- scroll down to see all wallet-signed actions with truncated signatures
-7. **View reputation** -- reputation dashboard shows multiplier computation from five scoring components
+1. **Connect wallet** -- open `/dapp`, connect Phantom (Solana devnet). Ensure you have devnet SOL.
+2. **Explore pre-loaded ballots** -- two demo proposals with sample vote tallies (offline data for preview)
+3. **Register a new union/DAO** -- fill in name + description, approve the wallet transaction. This creates on-chain `ReputationConfig` + `AdapterConfig` accounts in a single tx.
+4. **Create a ballot** -- add a proposal question and voting window. Submits `InitializeBallot` + `BindProposal` on-chain.
+5. **Cast a vote** -- select Yes / No / Abstain. The tx auto-registers the voter and creates a Voter Weight Record if needed, then casts the quadratic vote.
+6. **View on Explorer** -- every on-chain action shows a link to Solana Explorer. Click "Refresh from chain" to fetch live ballot tallies directly from the program accounts.
+7. **View audit trail** -- scroll down to see all wallet-signed actions with cryptographic signatures
+8. **View reputation** -- interactive reputation dashboard shows multiplier computation from five scoring components
 
 ---
 
@@ -49,11 +50,11 @@
 
 | Program | Address | Instructions |
 |---------|---------|-------------|
-| **quadratic-voting** | [`346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp`](https://explorer.solana.com/address/346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp?cluster=devnet) | `initialize_ballot`, `register_voter`, `update_voter_reputation_snapshot`, `cast_vote`, `finalize_ballot` |
-| **reputation-engine** | [`8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA`](https://explorer.solana.com/address/8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA?cluster=devnet) | `initialize_realm_config`, `set_oracle_authority`, `create_profile`, `apply_component_delta`, `apply_penalty`, `recalculate_profile`, `snapshot_multiplier` |
-| **realms-adapter** | [`E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky`](https://explorer.solana.com/address/E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky?cluster=devnet) | `initialize_adapter`, `bind_proposal`, `set_council_override`, `create_voter_weight_record`, `refresh_voter_weight_record` |
+| **quadratic-voting** | [`346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp`](https://explorer.solana.com/address/346RNEQcBBff4skHhQiRCPe9cDeWpaPTsT2TpQUFYomp?cluster=devnet) | `initialize_ballot`, `register_voter`, `update_voter_budget`, `cast_vote`, `finalize_ballot` |
+| **reputation-engine** | [`8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA`](https://explorer.solana.com/address/8JpbKjoR4c7n2HqS51WjyjJrLwvVgGGsKN4o2boohdEA?cluster=devnet) | `initialize_realm_config`, `update_realm_config`, `create_profile`, `apply_component_delta`, `apply_penalty`, `recalculate_profile`, `snapshot_multiplier` |
+| **realms-adapter** | [`E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky`](https://explorer.solana.com/address/E5CHyQY6gsxWB4cdTCSMxS3aY3J4eCVCXEe1KVTfk4Ky?cluster=devnet) | `initialize_adapter`, `bind_proposal`, `activate_council_override`, `create_voter_weight_record`, `refresh_voter_weight_record` |
 
-All three programs follow the same modular layout: `state.rs`, `errors.rs`, `events.rs`, and math/helper modules.
+All three are **native Solana programs** (not Anchor) using `solana_program::entrypoint!` with manual Borsh deserialization. Each follows the same modular layout: `state.rs`, `errors.rs`, `events.rs`, and math/helper modules.
 
 ---
 
@@ -65,9 +66,9 @@ All three programs follow the same modular layout: `state.rs`, `errors.rs`, `eve
 cd web && npm install && npm run dev
 ```
 
-Open `http://localhost:3000`. Routes: `/` landing, `/dapp` wallet + union/ballot demo, `/whitepaper` technical vision.
+Open `http://localhost:3000`. Routes: `/` landing, `/dapp` wallet + on-chain demo, `/whitepaper` technical vision.
 
-### Contracts
+### Programs
 
 ```bash
 cargo test                                   # unit + integration tests (52 tests)
@@ -76,6 +77,20 @@ solana program deploy target/deploy/<name>.so --program-id target/deploy/<name>-
 ```
 
 > **Note:** `cargo build-sbf` requires temporarily commenting out `tests/integration` and `examples` from the workspace members in `Cargo.toml` (their `solana-client`/`solana-sdk` transitive deps use `edition2024` which is incompatible with the SBF toolchain's Cargo 1.84).
+
+---
+
+## Frontend-to-Chain Integration
+
+The frontend calls all three programs directly using manual Borsh serialization -- zero Anchor dependency, zero additional npm packages.
+
+**How it works:**
+
+- `web/lib/programClient.js` contains all PDA derivation, instruction builders, account deserializers, and high-level action functions
+- Every user action (register DAO, create ballot, cast vote, finalize) submits a real Solana transaction via `@solana/wallet-adapter-react`
+- A transaction progress modal shows signing, sending, and confirmation stages
+- On-chain proposals display Solana Explorer links and a "Refresh from chain" button to fetch live ballot tallies
+- Pre-seeded demo data (BMA scenario) uses localStorage for offline preview; newly created DAOs and ballots are fully on-chain
 
 ---
 
@@ -113,7 +128,8 @@ web/
   app/                    -- Next.js app router (landing, dapp, whitepaper)
   app/components/         -- TypewriterHeadline, MathCalculator, NetworkStatus,
                              ReputationDashboard, AuditTrail, WalletConnectButton
-  lib/demoStore.js        -- Local demo store with seeded BMA scenario
-  lib/anchor.js           -- Solana client plumbing with deployed program IDs
-  lib/idl/                -- Drop IDL JSONs here after `anchor build`
+  lib/programClient.js    -- Borsh serialization, PDA derivation, instruction builders,
+                             account deserializers, high-level action functions
+  lib/demoStore.js        -- Local demo store with seeded BMA scenario + on-chain fields
+  lib/anchor.js           -- Re-exports from programClient.js + program ID constants
 ```

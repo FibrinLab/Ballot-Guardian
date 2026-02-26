@@ -20,6 +20,13 @@ import {
   registerDao,
   saveDemoStore,
 } from "../../lib/demoStore";
+import {
+  initializeDao,
+  createProposalOnChain,
+  castVoteOnChain,
+  finalizeBallotOnChain,
+  fetchQuadraticBallot,
+} from "../../lib/programClient";
 
 function useCountdown(closesAt) {
   const compute = useCallback(() => {
@@ -87,6 +94,33 @@ function VoteBar({ tallies }) {
   );
 }
 
+const TX_PROGRESS_LABELS = {
+  signing: "Signing message with wallet...",
+  building: "Building transaction...",
+  sending: "Approve in your wallet...",
+  confirming: "Confirming on Solana devnet...",
+  confirmed: "Confirmed!",
+};
+
+function TxProgressModal({ progress, onDismiss }) {
+  if (!progress) return null;
+  const label = TX_PROGRESS_LABELS[progress] || progress;
+  const isTerminal = progress === "confirmed";
+  return (
+    <div className="tx-modal-overlay" onClick={isTerminal ? onDismiss : undefined}>
+      <div className="tx-modal">
+        <p className="tx-modal__label">{label}</p>
+        {!isTerminal && <div className="tx-modal__spinner" />}
+        {isTerminal && (
+          <button type="button" className="button" onClick={onDismiss} style={{ marginTop: 12 }}>
+            Done
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function QvCostIndicator({ proposal }) {
   const totalVotes = proposal.votes?.length || 0;
   const creditsSpent = totalVotes * totalVotes;
@@ -111,7 +145,7 @@ function QvCostIndicator({ proposal }) {
 
 export default function DappPage() {
   const { connection } = useConnection();
-  const { connected, publicKey, signMessage, wallet } = useWallet();
+  const { connected, publicKey, signMessage, sendTransaction, wallet } = useWallet();
 
   const [store, setStore] = useState(createEmptyDemoStore);
   const [hydrated, setHydrated] = useState(false);
@@ -120,6 +154,9 @@ export default function DappPage() {
   const [balanceLamports, setBalanceLamports] = useState(null);
   const [status, setStatus] = useState(null);
   const [busyAction, setBusyAction] = useState("");
+
+  const [onChainBallot, setOnChainBallot] = useState(null);
+  const [txProgress, setTxProgress] = useState(null);
 
   const [daoFilterInput, setDaoFilterInput] = useState("");
   const deferredDaoFilter = useDeferredValue(daoFilterInput);
@@ -234,14 +271,22 @@ export default function DappPage() {
     try {
       setBusyAction("register-dao");
       setStatus(null);
+      setTxProgress("signing");
 
       const proof = await signActionProof("register_dao", {
         name: daoForm.name,
         description: daoForm.description,
       });
 
+      // On-chain: initialize DAO (reputation config + adapter config)
+      const onChain = await initializeDao(connection, { publicKey, sendTransaction }, setTxProgress);
+
       const result = registerDao(store, {
         ...daoForm,
+        realmPubkey: onChain.realmPubkey,
+        adapterConfigPDA: onChain.adapterConfigPDA,
+        repConfigPDA: onChain.repConfigPDA,
+        initTxSignature: onChain.txSignature,
         createdBy: walletAddress,
         proof,
       });
@@ -252,8 +297,9 @@ export default function DappPage() {
       });
 
       setDaoForm({ name: "", description: "" });
-      setStatus({ tone: "ok", text: `Registered union/DAO: ${result.dao.name}` });
+      setStatus({ tone: "ok", text: `Registered on-chain: ${result.dao.name} (tx: ${onChain.txSignature.slice(0, 12)}...)` });
     } catch (error) {
+      setTxProgress(null);
       setStatus({ tone: "error", text: toErrorText(error, "Could not register union/DAO.") });
     } finally {
       setBusyAction("");
@@ -266,12 +312,26 @@ export default function DappPage() {
     try {
       setBusyAction("create-proposal");
       setStatus(null);
+      setTxProgress("signing");
 
       const proof = await signActionProof("create_ballot", {
         daoId: selectedDaoId,
         question: proposalForm.question,
         durationHours: proposalForm.durationHours,
       });
+
+      // On-chain: create ballot + bind proposal
+      if (!selectedDao?.realmPubkey) {
+        throw new Error("This DAO was not registered on-chain. Register a new DAO first.");
+      }
+
+      const onChain = await createProposalOnChain(
+        connection,
+        { publicKey, sendTransaction },
+        selectedDao.realmPubkey,
+        Number(proposalForm.durationHours) || 24,
+        setTxProgress,
+      );
 
       const result = createProposal(store, {
         daoId: selectedDaoId,
@@ -280,12 +340,18 @@ export default function DappPage() {
         durationHours: proposalForm.durationHours,
         createdBy: walletAddress,
         proof,
+        proposalPubkey: onChain.proposalPubkey,
+        ballotPDA: onChain.ballotPDA,
+        bindingPDA: onChain.bindingPDA,
+        governingTokenMint: onChain.mintPubkey,
+        createTxSignature: onChain.txSignature,
       });
 
       startTransition(() => setStore(result.store));
       setProposalForm({ question: "", description: "", durationHours: "24" });
-      setStatus({ tone: "ok", text: "Ballot created." });
+      setStatus({ tone: "ok", text: `Ballot created on-chain (tx: ${onChain.txSignature.slice(0, 12)}...)` });
     } catch (error) {
+      setTxProgress(null);
       setStatus({ tone: "error", text: toErrorText(error, "Could not create ballot.") });
     } finally {
       setBusyAction("");
@@ -296,6 +362,7 @@ export default function DappPage() {
     try {
       setBusyAction(`vote-${proposal.id}`);
       setStatus(null);
+      setTxProgress("signing");
 
       const proof = await signActionProof("cast_vote", {
         daoId: selectedDaoId,
@@ -303,17 +370,34 @@ export default function DappPage() {
         choiceId,
       });
 
+      // On-chain: cast vote — require on-chain binding
+      if (!proposal.ballotPDA || !selectedDao?.realmPubkey || !proposal.proposalPubkey) {
+        throw new Error("This proposal is not on-chain. Create a new ballot from an on-chain DAO.");
+      }
+
+      const onChain = await castVoteOnChain(
+        connection,
+        { publicKey, sendTransaction },
+        selectedDao.realmPubkey,
+        proposal.proposalPubkey,
+        proposal.bindingPDA,
+        choiceId,
+        setTxProgress,
+      );
+
       const result = castVote(store, {
         daoId: selectedDaoId,
         proposalId: proposal.id,
         voter: walletAddress,
         choiceId,
         proof,
+        voteTxSignature: onChain.txSignature,
       });
 
       startTransition(() => setStore(result.store));
-      setStatus({ tone: "ok", text: `Vote recorded: ${choiceLabel(choiceId)}` });
+      setStatus({ tone: "ok", text: `Vote recorded on-chain: ${choiceLabel(choiceId)} (tx: ${onChain.txSignature.slice(0, 12)}...)` });
     } catch (error) {
+      setTxProgress(null);
       setStatus({ tone: "error", text: toErrorText(error, "Vote failed.") });
     } finally {
       setBusyAction("");
@@ -350,11 +434,31 @@ export default function DappPage() {
     try {
       setBusyAction(`close-${proposal.id}`);
       setStatus(null);
+      setTxProgress("signing");
 
       const proof = await signActionProof("close_ballot", {
         daoId: selectedDaoId,
         proposalId: proposal.id,
       });
+
+      // On-chain: finalize ballot only if the voting window has expired
+      let finalizeTxSig = null;
+      const votingExpired = proposal.closesAt && new Date(proposal.closesAt).getTime() <= Date.now();
+      if (votingExpired && proposal.ballotPDA && selectedDao?.realmPubkey && proposal.proposalPubkey) {
+        try {
+          const onChain = await finalizeBallotOnChain(
+            connection,
+            { publicKey, sendTransaction },
+            selectedDao.realmPubkey,
+            proposal.proposalPubkey,
+            setTxProgress,
+          );
+          finalizeTxSig = onChain.txSignature;
+        } catch (txErr) {
+          console.warn("On-chain finalize failed, closing locally:", txErr);
+        }
+      }
+      setTxProgress(null);
 
       const result = closeBallot(store, {
         daoId: selectedDaoId,
@@ -364,7 +468,11 @@ export default function DappPage() {
       });
 
       startTransition(() => setStore(result.store));
-      setStatus({ tone: "ok", text: "Ballot closed." });
+      if (finalizeTxSig) {
+        setStatus({ tone: "ok", text: `Ballot closed on-chain (tx: ${finalizeTxSig.slice(0, 12)}...)` });
+      } else {
+        setStatus({ tone: "ok", text: "Ballot closed." });
+      }
     } catch (error) {
       setStatus({ tone: "error", text: toErrorText(error, "Could not close ballot.") });
     } finally {
@@ -372,15 +480,29 @@ export default function DappPage() {
     }
   }
 
+  async function handleRefreshFromChain(proposal) {
+    if (!proposal.ballotPDA || !selectedDao?.realmPubkey || !proposal.proposalPubkey) return;
+    try {
+      const ballot = await fetchQuadraticBallot(connection, selectedDao.realmPubkey, proposal.proposalPubkey);
+      if (ballot) {
+        setOnChainBallot({ proposalId: proposal.id, ...ballot });
+        setStatus({ tone: "ok", text: "On-chain ballot data refreshed." });
+      }
+    } catch (err) {
+      setStatus({ tone: "error", text: toErrorText(err, "Could not fetch on-chain data.") });
+    }
+  }
+
   return (
     <>
+      <TxProgressModal progress={txProgress} onDismiss={() => setTxProgress(null)} />
       <div className="scanline" aria-hidden="true" />
 
       <header className="topbar">
         <div className="topbar__inner">
           <Link href="/" className="topbar__brand">BALLOT GUARDIAN / DAPP</Link>
           <nav aria-label="Primary">
-            <Link href="/whitepaper">White Paper</Link>
+            <Link href="/whitepaper">WhitePaper</Link>
           </nav>
         </div>
       </header>
@@ -391,7 +513,7 @@ export default function DappPage() {
           <h1>Register unions and run wallet-backed ballots</h1>
           <p className="lead">
             Connect your Solana wallet, register organizations, create ballots, and cast
-            wallet-signed votes. All actions are cryptographically signed and auditable.
+            quadratic votes. Every action submits a real on-chain transaction to Solana devnet.
           </p>
 
           <div className="dapp-hero__actions">
@@ -517,7 +639,10 @@ export default function DappPage() {
                       onKeyDown={(e) => { if (e.key === "Enter") setSelectedDaoId(dao.id); }}
                     >
                       <div className="dao-card__info">
-                        <span className="dao-card__name">{dao.name}</span>
+                        <span className="dao-card__name">
+                          {dao.name}
+                          {dao.realmPubkey && <span className="pill pill--onchain" style={{ marginLeft: 6, fontSize: "0.65em" }}>On-chain</span>}
+                        </span>
                         <span className="dao-card__meta">
                           {dao.proposals?.length || 0} ballots / {compactAddress(dao.createdBy)}
                         </span>
@@ -557,6 +682,18 @@ export default function DappPage() {
                 <p className="mini">
                   {selectedDao.description || "No description provided."}
                 </p>
+                {selectedDao.initTxSignature && (
+                  <p className="mini">
+                    Realm: {compactAddress(selectedDao.realmPubkey)} /{" "}
+                    <a
+                      href={`https://explorer.solana.com/tx/${selectedDao.initTxSignature}?cluster=devnet`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View init tx on Explorer
+                    </a>
+                  </p>
+                )}
 
                 <div className="subpanel subpanel--spaced">
                   <p className="label">CREATE BALLOT</p>
@@ -637,6 +774,9 @@ export default function DappPage() {
                               </p>
                             </div>
                             <div className="proposal-card__actions">
+                              {proposal.ballotPDA && (
+                                <span className="pill pill--onchain">On-chain</span>
+                              )}
                               {isBallotCreator && !closed && (
                                 <button
                                   type="button"
@@ -694,10 +834,50 @@ export default function DappPage() {
 
                           <QvCostIndicator proposal={proposal} />
 
+                          {proposal.ballotPDA && (
+                            <div className="proposal-card__onchain">
+                              {proposal.createTxSignature && (
+                                <a
+                                  href={`https://explorer.solana.com/tx/${proposal.createTxSignature}?cluster=devnet`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mini"
+                                >
+                                  View creation tx on Explorer
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                className="pill pill--action"
+                                onClick={() => handleRefreshFromChain(proposal)}
+                              >
+                                Refresh from chain
+                              </button>
+                              {onChainBallot && onChainBallot.proposalId === proposal.id && (
+                                <div className="mini" style={{ marginTop: 4 }}>
+                                  On-chain tallies — Yes: {onChainBallot.yesTallyScaled.toString()} / No: {onChainBallot.noTallyScaled.toString()} / Abstain: {onChainBallot.abstainTallyScaled.toString()}
+                                  {onChainBallot.finalized && " (Finalized)"}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <p className="mini proposal-card__foot">
                             {walletVote
-                              ? `Your vote: ${choiceLabel(walletVote.choiceId)} (${formatDate(walletVote.castAt)})`
+                              ? `Your vote: ${choiceLabel(walletVote.choiceId)} (${formatDate(walletVote.castAt)})${walletVote.voteTxSignature ? "" : " (offline)"}`
                               : "You have not voted on this ballot yet."}
+                            {walletVote?.voteTxSignature && (
+                              <>
+                                {" "}
+                                <a
+                                  href={`https://explorer.solana.com/tx/${walletVote.voteTxSignature}?cluster=devnet`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  View tx
+                                </a>
+                              </>
+                            )}
                           </p>
                         </article>
                       );

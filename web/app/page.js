@@ -14,7 +14,7 @@ export default function LandingPage() {
           <Link href="/" className="topbar__brand">BALLOT GUARDIAN / SOLANA</Link>
           <nav aria-label="Primary">
             <Link href="/dapp">Dapp</Link>
-            <Link href="/whitepaper">White Paper</Link>
+            <Link href="/whitepaper">WhitePaper</Link>
           </nav>
         </div>
       </header>
@@ -28,8 +28,9 @@ export default function LandingPage() {
           />
           <p className="lead">
             Ballot Guardian is a Solana governance application and Realms extension
-            built by an NHS junior doctor to bring verifiable, wallet-signed voting
+            built by an NHS junior doctor to bring verifiable, on-chain voting
             to the British Medical Association and organizations like it.
+            Three programs deployed on devnet, fully integrated end-to-end.
           </p>
           <div className="button-row">
             <Link className="button" href="/dapp">
@@ -50,19 +51,19 @@ export default function LandingPage() {
             <article className="subpanel">
               <h2>1. Connect Wallet</h2>
               <p>
-                Use Phantom wallet to authenticate as a member or organizer.
+                Use Phantom on Solana devnet to authenticate as a member or organizer. Every action submits a real on-chain transaction.
               </p>
             </article>
             <article className="subpanel">
               <h2>2. Register Union (DAO)</h2>
               <p>
-                Create a union workspace, then add proposals/ballots for members to vote on.
+                Create an on-chain organization with reputation config and adapter accounts, then add ballots for members to vote on.
               </p>
             </article>
             <article className="subpanel">
-              <h2>3. Vote + Audit</h2>
+              <h2>3. Vote + Verify</h2>
               <p>
-                Cast a wallet-backed vote. Every action is signed and recorded in the audit trail.
+                Cast a quadratic vote on-chain. View every transaction on Solana Explorer and fetch live tallies from program accounts.
               </p>
             </article>
           </div>

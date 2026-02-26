@@ -138,6 +138,10 @@ export function registerDao(store, input) {
     createdAt: new Date().toISOString(),
     createdBy: input.createdBy,
     proof: input.proof || null,
+    realmPubkey: input.realmPubkey || null,
+    adapterConfigPDA: input.adapterConfigPDA || null,
+    repConfigPDA: input.repConfigPDA || null,
+    initTxSignature: input.initTxSignature || null,
     proposals: [],
   };
 
@@ -232,6 +236,11 @@ export function createProposal(store, input) {
       closesAt: closesAt.toISOString(),
       createdBy: input.createdBy,
       proof: input.proof || null,
+      proposalPubkey: input.proposalPubkey || null,
+      ballotPDA: input.ballotPDA || null,
+      bindingPDA: input.bindingPDA || null,
+      governingTokenMint: input.governingTokenMint || null,
+      createTxSignature: input.createTxSignature || null,
       choices: DEFAULT_PROPOSAL_CHOICES,
       votes: [],
     };
@@ -292,6 +301,7 @@ export function castVote(store, input) {
           choiceId,
           castAt: now.toISOString(),
           proof: proof || null,
+          voteTxSignature: input.voteTxSignature || null,
         };
 
         const nextVotes =
@@ -358,6 +368,28 @@ function clampInteger(value, min, max) {
   const n = Number.parseInt(String(value), 10);
   if (Number.isNaN(n)) return min;
   return Math.min(max, Math.max(min, n));
+}
+
+export function updateDaoOnChainFields(store, daoId, fields) {
+  const daos = store.daos.map((dao) => {
+    if (dao.id !== daoId) return dao;
+    return { ...dao, ...fields };
+  });
+  return { ...store, daos };
+}
+
+export function updateProposalOnChainFields(store, daoId, proposalId, fields) {
+  const daos = store.daos.map((dao) => {
+    if (dao.id !== daoId) return dao;
+    return {
+      ...dao,
+      proposals: (dao.proposals || []).map((p) => {
+        if (p.id !== proposalId) return p;
+        return { ...p, ...fields };
+      }),
+    };
+  });
+  return { ...store, daos };
 }
 
 function makeId(prefix) {

@@ -44,7 +44,7 @@ export default function WhitepaperPage() {
 
         <div className="whitepaper-content">
           <header className="hero" id="top">
-            <p className="kicker">WHITE PAPER v2.0 / SOLANA HACKATHON EDITION</p>
+            <p className="kicker">WHITEPAPER v2.0 / SOLANA HACKATHON EDITION</p>
             <TypewriterHeadline
               id="hero-title"
               text="Reputation-Weighted Quadratic Voting for Realms DAOs"
@@ -69,7 +69,7 @@ export default function WhitepaperPage() {
           <section className="panel panel--mono" id="thesis" aria-labelledby="thesis-title">
             <div className="panel__head">
               <p className="label">EXECUTIVE SUMMARY</p>
-              <span className="stamp">DRAFT / BUILDING</span>
+              <span className="stamp">DEPLOYED / DEVNET</span>
             </div>
             <h2 id="thesis-title">
               Realms already gives governance primitives. Ballot Guardian upgrades the voting logic.
@@ -279,29 +279,31 @@ Use cases:
 
           <section className="panel" id="roadmap" aria-labelledby="roadmap-title">
             <div className="panel__head">
-              <p className="label">HACKATHON BUILD PLAN</p>
+              <p className="label">BUILD STATUS</p>
             </div>
-            <h2 id="roadmap-title">MVP-first roadmap (what ships vs. what stretches)</h2>
+            <h2 id="roadmap-title">What shipped and what comes next</h2>
             <ol className="timeline">
               <li>
-                <h3>Week 1 / Core contracts</h3>
+                <h3>Shipped / Core programs</h3>
                 <p>
-                  Quadratic vote logic, voter credit enforcement, reputation profiles, deterministic
-                  multiplier calculation, adapter binding accounts.
+                  Three native Solana programs deployed on devnet: quadratic voting with credit enforcement,
+                  reputation engine with deterministic multiplier computation, and Realms adapter with
+                  SPL-compatible voter weight records. 52 integration tests passing.
                 </p>
               </li>
               <li>
-                <h3>Week 2 / Realms integration + demo surface</h3>
+                <h3>Shipped / Frontend integration</h3>
                 <p>
-                  Proposal binding flow, plugin-style voter weight record refresh, minimal UI
-                  walkthrough, example DAO configuration.
+                  End-to-end on-chain flow: register DAO, create ballot, cast quadratic vote, finalize
+                  ballot. Manual Borsh serialization, PDA derivation, and transaction submission from the
+                  browser with real wallet signing and Solana Explorer links.
                 </p>
               </li>
               <li>
-                <h3>Stretch / Identity + analytics</h3>
+                <h3>Next / Identity + analytics</h3>
                 <p>
                   Membership NFT gating, wallet aging/cooldowns, suspicious pattern heuristics,
-                  reputation dashboard.
+                  off-chain oracle enrichment, and production SPL Governance version locking.
                 </p>
               </li>
             </ol>
@@ -309,12 +311,12 @@ Use cases:
 
           <section className="panel" id="contracts" aria-labelledby="contracts-title">
             <div className="panel__head">
-              <p className="label">CONTRACTS (ANCHOR)</p>
+              <p className="label">CONTRACTS (NATIVE SOLANA)</p>
               <p className="mini">
-                Implemented in <code>programs/</code>
+                Deployed on devnet / <code>programs/</code>
               </p>
             </div>
-            <h2 id="contracts-title">Useful MVP programs are already scaffolded and compiled</h2>
+            <h2 id="contracts-title">Three programs deployed and integrated end-to-end</h2>
             <div className="details-grid">
               <details open>
                 <summary>
@@ -328,7 +330,7 @@ Use cases:
                     <code>register_voter</code>
                   </li>
                   <li>
-                    <code>update_voter_reputation_snapshot</code>
+                    <code>update_voter_budget</code>
                   </li>
                   <li>
                     <code>cast_vote</code> (quadratic credit spend)
@@ -387,9 +389,9 @@ Use cases:
               </details>
             </div>
             <p className="note">
-              This adapter stores plugin-style voter weight records and proposal bindings. Final
-              production compatibility should target the exact SPL Governance / Realms plugin
-              interface version you plan to deploy against.
+              All three programs are deployed on Solana devnet and integrated with the frontend.
+              The adapter stores SPL-compatible voter weight records and proposal bindings. The
+              frontend submits real on-chain transactions for every governance action.
             </p>
           </section>
 
