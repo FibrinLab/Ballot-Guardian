@@ -7,4 +7,5 @@ node_modules/
 .idea/
 .vscode/
 dist/
-key_gen.jsonout/
+key_gen.json
+out/
