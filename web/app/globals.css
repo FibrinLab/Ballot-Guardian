@@ -1483,3 +1483,238 @@ textarea {
   gap: 8px;
   margin-top: 8px;
 }
+
+/* ── Ballot result ── */
+
+.ballot-result {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-top: 3px solid #888;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 14px;
+}
+
+.ballot-result--yes {
+  border-top-color: #4a6b4a;
+}
+
+.ballot-result--no {
+  border-top-color: #7a4444;
+}
+
+.ballot-result--neutral {
+  border-top-color: #888;
+}
+
+.ballot-result__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ballot-result__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.ballot-result__pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ballot-result__verdict {
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 12px;
+}
+
+.ballot-result__verdict-tag {
+  display: block;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+}
+
+.ballot-result__verdict--yes .ballot-result__verdict-tag {
+  color: #4a6b4a;
+}
+
+.ballot-result__verdict--no .ballot-result__verdict-tag {
+  color: #7a4444;
+}
+
+.ballot-result__verdict--neutral .ballot-result__verdict-tag {
+  color: #888;
+}
+
+.ballot-result__verdict-text {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ballot-result__tallies {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ballot-result__tally {
+  border: 1px solid var(--line);
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+}
+
+.ballot-result__tally strong {
+  font-size: 18px;
+}
+
+.ballot-result__tally-pct {
+  font-size: 11px;
+  color: var(--muted-soft);
+}
+
+.ballot-result__tally--yes {
+  border-left: 2px solid #4a6b4a;
+}
+
+.ballot-result__tally--no {
+  border-left: 2px solid #7a4444;
+}
+
+.ballot-result__tally--abstain {
+  border-left: 2px solid #888;
+}
+
+.ballot-result__bar {
+  display: flex;
+  height: 6px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.ballot-result__bar-seg {
+  height: 100%;
+}
+
+.ballot-result__bar-seg--yes {
+  background: #4a6b4a;
+}
+
+.ballot-result__bar-seg--no {
+  background: #7a4444;
+}
+
+.ballot-result__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 10px;
+}
+
+.ballot-result__stat {
+  display: grid;
+  gap: 2px;
+}
+
+.ballot-result__stat strong {
+  font-size: 13px;
+}
+
+.ballot-result__stat strong[data-tone="ok"] {
+  color: #4a6b4a;
+}
+
+.ballot-result__stat strong[data-tone="warn"] {
+  color: #7a4444;
+}
+
+.ballot-result__stat strong[data-tone="neutral"] {
+  color: var(--muted-soft);
+}
+
+.ballot-result__margin-label {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--muted-soft);
+}
+
+.ballot-result__verify {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ballot-result__pda {
+  font-family: inherit;
+  letter-spacing: 0.02em;
+}
+
+.ballot-result__stamp {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted-soft);
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ballot-result {
+    animation: ballot-result-in 600ms ease-out both;
+  }
+
+  .ballot-result__verdict-tag {
+    animation: verdict-contract 400ms ease-out 200ms both;
+  }
+}
+
+@keyframes ballot-result-in {
+  from {
+    opacity: 0;
+    border-color: transparent;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes verdict-contract {
+  from {
+    letter-spacing: 0.2em;
+    opacity: 0.5;
+  }
+  to {
+    letter-spacing: 0.04em;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .ballot-result__tallies {
+    grid-template-columns: 1fr;
+  }
+
+  .ballot-result__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

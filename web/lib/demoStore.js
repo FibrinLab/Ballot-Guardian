@@ -18,6 +18,7 @@ export function createSeededDemoStore() {
   const h48 = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
   const h24 = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const createdAt = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+  const closedAt = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
   return {
     version: 1,
@@ -42,6 +43,11 @@ export function createSeededDemoStore() {
             closesAt: h48,
             createdBy: "7xKX...demoSeed",
             proof: null,
+            proposalPubkey: null,
+            ballotPDA: null,
+            bindingPDA: null,
+            governingTokenMint: null,
+            createTxSignature: null,
             choices: DEFAULT_PROPOSAL_CHOICES,
             votes: [
               {
@@ -77,6 +83,11 @@ export function createSeededDemoStore() {
             closesAt: h24,
             createdBy: "7xKX...demoSeed",
             proof: null,
+            proposalPubkey: null,
+            ballotPDA: null,
+            bindingPDA: null,
+            governingTokenMint: null,
+            createTxSignature: null,
             choices: DEFAULT_PROPOSAL_CHOICES,
             votes: [
               {
@@ -84,6 +95,60 @@ export function createSeededDemoStore() {
                 voter: "3aFb...voter1",
                 choiceId: "yes",
                 castAt: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+            ],
+          },
+          {
+            id: "prop_seed-pay-offer",
+            question:
+              "Should the union accept the government's revised pay offer of 6.5%?",
+            description:
+              "The government has tabled a revised offer of 6.5% over two years. The BMA negotiating team recommends rejection, citing inflation-adjusted losses of 26% since 2008.",
+            createdAt: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+            closesAt: closedAt,
+            createdBy: "7xKX...demoSeed",
+            proof: null,
+            proposalPubkey: null,
+            ballotPDA: null,
+            bindingPDA: null,
+            governingTokenMint: null,
+            createTxSignature: null,
+            choices: DEFAULT_PROPOSAL_CHOICES,
+            votes: [
+              {
+                id: "vote_seed-5",
+                voter: "3aFb...voter1",
+                choiceId: "no",
+                castAt: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-6",
+                voter: "9kRm...voter2",
+                choiceId: "no",
+                castAt: new Date(now.getTime() - 3.5 * 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-7",
+                voter: "Dp7Q...voter3",
+                choiceId: "no",
+                castAt: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-8",
+                voter: "Hk2L...voter4",
+                choiceId: "yes",
+                castAt: new Date(now.getTime() - 2.5 * 60 * 60 * 1000).toISOString(),
+                proof: null,
+              },
+              {
+                id: "vote_seed-9",
+                voter: "Wnx8...voter5",
+                choiceId: "abstain",
+                castAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
                 proof: null,
               },
             ],
@@ -337,6 +402,82 @@ export function getProposalTallies(proposal) {
     }
   }
   return counts;
+}
+
+export function determineBallotResult(proposal, onChainBallot) {
+  if (!isProposalClosed(proposal)) return null;
+
+  const hasOnChain = onChainBallot && onChainBallot.proposalId === proposal.id;
+  let yes, no, abstain, isReputationWeighted, isFinalized;
+
+  if (hasOnChain) {
+    yes = Number(onChainBallot.yesTallyScaled);
+    no = Number(onChainBallot.noTallyScaled);
+    abstain = Number(onChainBallot.abstainTallyScaled);
+    isReputationWeighted = true;
+    isFinalized = !!onChainBallot.finalized;
+  } else {
+    const tallies = getProposalTallies(proposal);
+    yes = tallies.yes;
+    no = tallies.no;
+    abstain = tallies.abstain;
+    isReputationWeighted = false;
+    isFinalized = false;
+  }
+
+  const totalWeight = yes + no + abstain;
+  const totalVoters = (proposal.votes || []).length;
+  const decidingVotes = yes + no;
+
+  let outcome, outcomeLabel;
+  if (totalWeight === 0) {
+    outcome = "NO_VOTES";
+    outcomeLabel = "No votes cast";
+  } else if (decidingVotes === 0) {
+    outcome = "TIE";
+    outcomeLabel = "Tied — no majority";
+  } else if (yes > no) {
+    outcome = "YES";
+    outcomeLabel = "Motion carries";
+  } else if (no > yes) {
+    outcome = "NO";
+    outcomeLabel = "Motion fails";
+  } else {
+    outcome = "TIE";
+    outcomeLabel = "Tied — no majority";
+  }
+
+  const marginOfVictory =
+    decidingVotes > 0
+      ? Math.round((Math.abs(yes - no) / decidingVotes) * 100)
+      : 0;
+
+  const registeredVoters = hasOnChain && onChainBallot.registeredVoters
+    ? Number(onChainBallot.registeredVoters)
+    : null;
+  const turnoutPct = registeredVoters
+    ? Math.round((totalVoters / registeredVoters) * 100)
+    : null;
+  const quorumMet = turnoutPct != null ? turnoutPct >= 50 : null;
+
+  return {
+    outcome,
+    outcomeLabel,
+    yes,
+    no,
+    abstain,
+    totalWeight,
+    totalVoters,
+    registeredVoters,
+    turnoutPct,
+    quorumMet,
+    marginOfVictory,
+    isReputationWeighted,
+    isFinalized,
+    closedAt: proposal.closesAt,
+    ballotPDA: proposal.ballotPDA || null,
+    createTxSignature: proposal.createTxSignature || null,
+  };
 }
 
 export function getWalletVote(proposal, walletAddress) {

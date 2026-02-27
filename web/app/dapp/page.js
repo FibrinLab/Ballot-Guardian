@@ -6,12 +6,14 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import WalletConnectButton from "../components/WalletConnectButton";
 import ReputationDashboard from "../components/ReputationDashboard";
 import AuditTrail from "../components/AuditTrail";
+import BallotResult from "../components/BallotResult";
 import {
   castVote,
   closeBallot,
   createEmptyDemoStore,
   createProposal,
   deleteDao,
+  determineBallotResult,
   getDaoById,
   getProposalTallies,
   getWalletVote,
@@ -473,6 +475,16 @@ export default function DappPage() {
       } else {
         setStatus({ tone: "ok", text: "Ballot closed." });
       }
+
+      // Auto-refresh on-chain data so BallotResult shows reputation-weighted tallies
+      if (proposal.ballotPDA && selectedDao?.realmPubkey && proposal.proposalPubkey) {
+        try {
+          const ballot = await fetchQuadraticBallot(connection, selectedDao.realmPubkey, proposal.proposalPubkey);
+          if (ballot) {
+            setOnChainBallot({ proposalId: proposal.id, ...ballot });
+          }
+        } catch { /* ignore refresh failure */ }
+      }
     } catch (error) {
       setStatus({ tone: "error", text: toErrorText(error, "Could not close ballot.") });
     } finally {
@@ -762,6 +774,7 @@ export default function DappPage() {
                       const walletVote = getWalletVote(proposal, walletAddress);
                       const closed = isProposalClosed(proposal);
                       const isBallotCreator = walletAddress && proposal.createdBy === walletAddress;
+                      const ballotResult = closed ? determineBallotResult(proposal, onChainBallot) : null;
 
                       return (
                         <article key={proposal.id} className="proposal-card">
@@ -815,6 +828,8 @@ export default function DappPage() {
                           </div>
 
                           <VoteBar tallies={tallies} />
+
+                          {ballotResult && <BallotResult result={ballotResult} />}
 
                           <div className="vote-grid" role="group" aria-label={`Vote options for ${proposal.question}`}>
                             {(proposal.choices || []).map((choice) => (
